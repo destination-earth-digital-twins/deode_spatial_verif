@@ -1,0 +1,17 @@
+'format':
+    'filename': 'SEVIRI_bt_%Y%m%d-%H%M.nc'
+    'extension': 'netCDF'
+'vars':
+    'bt':
+        'var': 'channel_9'
+        'postprocess': True
+        'res': '3 km'
+        'description': 'Brightness Temperature'
+        'units': 'ºC'
+        'FSS': 
+            'thresholds': [10, 20, 30, 40, 50]
+            'scales': [2, 3, 4, 5, 6, 7]
+        'SAL':
+            'f': 0.5
+            'q': 0.95
+            'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 50, "minmax": 41, "mindis": 10}

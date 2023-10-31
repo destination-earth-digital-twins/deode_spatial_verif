@@ -1,0 +1,18 @@
+'format':
+    'filename': ''
+    'extension': ''
+'vars':
+    '':
+        'var_raw': ''
+        'postprocess': 
+        'res': ''
+	'description': ''
+	'units': ''
+        'FSS': 
+            'thresholds': []
+            'scales': []
+        'SAL':
+            'f': 
+            'q': 
+            'tstorm_kwargs': {"max_num_features": , "minref": , "maxref": , "mindiff": , "minsize": , "minmax": , "mindis": }
+

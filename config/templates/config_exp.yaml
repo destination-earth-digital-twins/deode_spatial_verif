@@ -1,0 +1,22 @@
+'model':
+    'name': ''
+'format':
+    'filepaths': [,]
+    'filename': ''
+    'extension': ''
+'inits':
+    '':
+        'path': 
+        'fcast_horiz': ''
+'vars':
+    '':
+        'var': 
+        'accum': 
+        'postprocess': ''
+        'negative_values': 
+    'lat':
+        'var': ''
+        'description': ''
+    'lon':
+        'var': ''
+        'description': ''
