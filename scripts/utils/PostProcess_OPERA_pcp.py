@@ -8,7 +8,19 @@ from datetime import datetime, timedelta
 from LoadWriteData import LoadConfigFileFromYaml, BuildXarrayDataset
 
 obs = 'OPERA_pcp'
-obsFilenameRaw = 'ODC.LAM_%Y%m%d%H%M_000100.h5'
+obs_filename_raw = 'ODC.LAM_%Y%m%d%H%M_000100.h5'
+
+def make_dir_obs(obs_db, case):
+    cwd = os.getcwd()
+    os.chdir(f'../../OBSERVATIONS/')
+    if os.path.exists(f'data_{obs_db}/') == False:
+        os.mkdir(f'data_{obs_db}')
+    os.chdir(f'data_{obs_db}/')
+    if os.path.exists(f'{case}/') == False:
+        os.mkdir(case)
+    os.chdir(cwd)
+    obs_path = f'../../OBSERVATIONS/data_{obs_db}/{case}/'
+    return obs_path
 
 def get_vars_from_OPERA(filename, list_vars):
     # list_var must be a list with the "path" of the var join by ':' character
@@ -49,25 +61,27 @@ def get_latlon2D_from_OPERA(filename):
 
 def main(path_OPERA_raw, case):
     # OBS data: database + variable
-    obsDB, var = obs.split('_')
+    obs_db, var_verif = obs.split('_')
     
     # observation database info
-    dataObs = LoadConfigFileFromYaml(f'../../config/config_{obsDB}.yaml')
-    obsFileName = dataObs['format']['filename']
-    varGet = dataObs['vars'][var]['var']
+    config_obs = LoadConfigFileFromYaml(f'../../config/obs_db/config_{obs_db}.yaml')
+    obs_filename = config_obs['format']['filename']
+    obs_var_get = config_obs['vars'][var_verif]['var']
 
     # Case data: initial date + end date
-    dataCase = LoadConfigFileFromYaml(f'../../config/config_{case}.yaml')
-    date_ini = datetime.strptime(dataCase['dates']['ini'], '%Y%m%d%H') + timedelta(hours = 1)
-    date_end = datetime.strptime(dataCase['dates']['end'], '%Y%m%d%H') + timedelta(hours = 1)
+    config_case = LoadConfigFileFromYaml(f'../../config/Case/config_{case}.yaml')
+    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H') + timedelta(hours = 1)
+    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H') + timedelta(hours = 1)
+
+    obs_path = make_dir_obs(obs_db, case)
     
     dates = pd.date_range(date_ini, date_end, freq = '1H').to_pydatetime()
     for date in dates:
-        file_obs = datetime.strftime(date, f'{path_OPERA_raw}{obsFilenameRaw}')
-        values = get_vars_from_OPERA(file_obs, [varGet,])
+        file_obs = datetime.strftime(date, f'{path_OPERA_raw}{obs_filename_raw}')
+        values = get_vars_from_OPERA(file_obs, [obs_var_get,])
         lat_obs, lon_obs = get_latlon2D_from_OPERA(file_obs)
-        ds = BuildXarrayDataset(np.flip(values, axis = 0), lon_obs, lat_obs, date, varName = var, lonName = 'lon', latName = 'lat', descriptionNc = f'OPERA | 1-hour accumulated precipitation | {datetime.strftime(date - timedelta(hours = 1), "%Y%m%d%H")}-{datetime.strftime(date, "%Y%m%d%H")}')
-        ds.to_netcdf(datetime.strftime(date, f'../../OBSERVATIONS/data_{obs}/{case}/{obsFileName}'), compute='True')
+        ds = BuildXarrayDataset(np.flip(values, axis = 0), lon_obs, lat_obs, date, varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'OPERA | 1-hour accumulated precipitation | {datetime.strftime(date - timedelta(hours = 1), "%Y%m%d%H")}-{datetime.strftime(date, "%Y%m%d%H")}')
+        ds.to_netcdf(datetime.strftime(date, f'{obs_path}{obs_filename}'), compute='True')
     return 0
 
 if __name__ == '__main__':

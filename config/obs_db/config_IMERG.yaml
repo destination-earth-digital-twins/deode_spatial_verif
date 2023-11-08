@@ -1,6 +1,6 @@
 'format':
     'filename': '3B-HHR-L.MS.MRG.3IMERG.%Y%m%d-%H_%M.V06B.nc'
-    'extension': 'netCDF'
+    'fileformat': 'netCDF'
 'vars':
     'pcp':
         'var': 'precipitationCal'

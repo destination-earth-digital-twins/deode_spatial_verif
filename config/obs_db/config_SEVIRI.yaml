@@ -1,6 +1,6 @@
 'format':
     'filename': 'SEVIRI_bt_%Y%m%d-%H%M.nc'
-    'extension': 'netCDF'
+    'fileformat': 'netCDF'
 'vars':
     'bt':
         'var': 'channel_9'

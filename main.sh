@@ -10,7 +10,7 @@ expHighRes="VAL500m_46h1_de2"
 # tasks
 run_set_environment=true
 run_regrid=true
-run_plot=true
+run_plot_regrid=true
 run_verif=true
 run_panels=true
 run_comparison=true
@@ -36,7 +36,7 @@ if $run_regrid; then
     run_python scripts/verification/regrid.py "$expHighRes"
 fi
 
-if $run_plot; then
+if $run_plot_regrid; then
     run_python scripts/utils/plot_regrid.py "$expLowRes"
     run_python scripts/utils/plot_regrid.py "$expHighRes"
 fi
@@ -52,6 +52,6 @@ if $run_panels; then
 fi
 
 if $run_comparison && [[ "$expLowRes" != "" && "$expHighRes" != "" ]]; then
-    python3 scripts/scripts/verification/compExps_metrics.py ${OBS} ${Case} "${expLowRes}-VS-${expHighRes}"
-    python3 scripts/scripts/verification/compExps_maps.py ${OBS} ${Case} "${expLowRes}-VS-${expHighRes}"
+    python3 scripts/verification/compExps_metrics.py ${OBS} ${Case} "${expLowRes}-VS-${expHighRes}"
+    python3 scripts/verification/compExps_maps.py ${OBS} ${Case} "${expLowRes}-VS-${expHighRes}"
 fi

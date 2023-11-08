@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import re
 import os, sys
 sys.path.append('scripts/libs/')
 import numpy as np
@@ -15,43 +16,58 @@ from plots import PlotMapInAxis
 freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
 old_inits = ['2020091506', '2020091512', '2020091518', '2020091606', '2020091612', '2020091618'] # TESTING!!!
 
+def lead_time_replace(text, replace_with = '*'):
+    pattern = r'(%LL+)'
+    new_text = re.sub(pattern, lambda match: replace_function(match.group(0), replace_with), text)
+    return new_text
+
+def replace_function(text, replace_with):
+    if isinstance(replace_with, int):
+        return str(replace_with).zfill(len(text) - 1)
+    else:
+        return "*"
+
 def main(obs, case, exp):
     # OBS data: database + variable
-    obsDB, varRaw = obs.split('_')
+    obs_db, var_verif = obs.split('_')
 
     # observation database info
-    dataObs = LoadConfigFileFromYaml(f'config/config_{obsDB}.yaml')
-    obsFileName = dataObs['format']['filename']
-    obsFileFormat = dataObs['format']['extension']
-    print(f'Load config file for {obsDB} database: \n file name: {obsFileName}; file format: {obsFileFormat}')
+    config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
+    obs_filename = config_obs_db['format']['filename']
+    obs_fileformat = config_obs_db['format']['fileformat']
+    if config_obs_db['vars'][var_verif]['postprocess'] == True:
+        obs_var_get = var_verif
+    else:
+        obs_var_get = config_obs_db['vars'][var_verif]['var_raw']
+    var_verif_description = config_obs_db['vars'][var_verif]['description']
+    var_verif_units = config_obs_db['vars'][var_verif]['units']
+    print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get} ({var_verif_description}, in {var_verif_units})')
 
     # Case data: initial date + end date
-    dataCase = LoadConfigFileFromYaml(f'config/config_{case}.yaml')
-    date_ini = datetime.strptime(dataCase['dates']['ini'], '%Y%m%d%H')
-    date_end = datetime.strptime(dataCase['dates']['end'], '%Y%m%d%H')
-    bounds = dataCase['location']['NOzoom']
-    print(f'Load config file for {case} case study: \n init: {dataCase["dates"]["ini"]}; end: {dataCase["dates"]["end"]}')
+    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
+    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
+    case_domain = config_case['location']['NOzoom']
+    print(f'Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}')
 
     # exp data
-    dataExp = LoadConfigFileFromYaml(f'config/config_{exp}.yaml')
-    model = dataExp['model']['name']
-    exp_filepaths = dataExp['format']['filepaths']
-    exp_filename_dateformat = dataExp['format']['filename']
-    exp_fileformat = dataExp['format']['extension']
-    exp_var_get = dataExp['vars'][varRaw]['var']
-    is_accum = dataExp['vars'][varRaw]['accum']
-    postprocess = dataExp['vars'][varRaw]['postprocess']
-    exp_var_description = dataExp['vars'][varRaw]['description']
-    exp_var_units = dataExp['vars'][varRaw]['units']
-    print(f'Load config file for {exp} simulation: \n model: {model}; file paths: {exp_filepaths}; file name: {exp_filename_dateformat}; file format: {exp_fileformat}; variable to extract: {exp_var_get} ({varRaw}: {exp_var_description}, in {exp_var_units})')
+    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    exp_model = config_exp['model']['name']
+    exp_filepaths = config_exp['format']['filepaths']
+    exp_filename = config_exp['format']['filename']
+    exp_fileformat = config_exp['format']['fileformat']
+    exp_var_get = config_exp['vars'][var_verif]['var']
+    is_accum = config_exp['vars'][var_verif]['accum']
+    postprocess = config_exp['vars'][var_verif]['postprocess']
+    print(f'Load config file for {exp} simulation: \n model: {exp_model}; file paths: {exp_filepaths}; file name: {exp_filename}; file format: {exp_fileformat}; var. to get: {exp_var_get} ({var_verif})')
     
     # init times of nwp
-    for init_time in dataExp['inits'].keys():
+    for init_time in config_exp['inits'].keys():
         # INIT OF TESTING!!!!
         if np.isin(init_time, old_inits).item() == True:
             exp_var_get = 315
         # END OF TESTING!!!
-        date_exp_end = dataExp['inits'][init_time]['fcast_horiz']
+        date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
         
         # set lead times from experiments
         date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
@@ -67,30 +83,35 @@ def main(obs, case, exp):
         print(f'Forecast from {exp}: {init_time}+{str(forecast_ini).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_ini), "%Y%m%d%H")}) up to {init_time}+{str(forecast_horiz).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_horiz), "%Y%m%d%H")})')
         
         # link simus to SIMULATIONS/
-        filesPath = exp_filepaths[dataExp['inits'][init_time]['path']].replace('%exp', exp)
-        os.system(f'ln -s {datetime.strftime(date_simus_ini, filesPath)}{exp_filename_dateformat.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*").replace("%LL", "*")} SIMULATIONS/{exp}/data_orig/{init_time}/') # TESTING!!!
-        os.system(f'ls -ltr SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dateformat.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*").replace("%LL", "*")}') # TESTING!!!
+        filesPath = exp_filepaths[config_exp['inits'][init_time]['path']].replace('%exp', exp)
+        exp_filename_no_lead = lead_time_replace(exp_filename)
+        os.system(f'ln -s {datetime.strftime(date_simus_ini, filesPath)}{exp_filename_no_lead.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*")} SIMULATIONS/{exp}/data_orig/{init_time}/')
+        os.system(f'ls -ltr SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_no_lead.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*")}')
 
         # get lat, lon coordinates from observations and simus at, for example, initial lead time
         if is_accum == True:
-            obs_file = datetime.strftime(date_ini + timedelta(hours = 1), f'OBSERVATIONS/data_{obs}/{case}/{obsFileName}')
+            obs_file = datetime.strftime(date_ini + timedelta(hours = 1), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
         else:
-            obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obsFileName}')
-        simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dateformat.replace("%LL", str(forecast_ini).zfill(2))}') # TESTING!!!
-        obs_lat, obs_lon = get_grid_function[obsFileFormat](obs_file)
+            obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
+        exp_filename_t = lead_time_replace(exp_filename, forecast_ini)
+        simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
+        obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
         simus_lat, simus_lon = get_grid_function[exp_fileformat](simus_file)
-        print(f'Lat lon coordinates from {obsDB}: \n --- lat --- \n{obs_lat} \n --- lon --- \n{obs_lon}')
+        print(f'Lat lon coordinates from {obs_db}: \n --- lat --- \n{obs_lat} \n --- lon --- \n{obs_lon}')
         print(f'Lat lon coordinates from {exp}: \n --- lat --- \n{simus_lat} \n --- lon --- \n{simus_lon}')
 
         for forecast in range(forecast_ini, forecast_horiz + 1, freqHours):
             # get original simus
             if is_accum == True:
                 # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
-                data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dateformat.replace("%LLL", str(forecast).zfill(3))}'), [exp_var_get])
-                data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dateformat.replace("%LLL", str(forecast - freqHours).zfill(3))}'), [exp_var_get])
+                exp_filename_t = lead_time_replace(exp_filename, forecast)
+                exp_filename_dt = lead_time_replace(exp_filename, forecast - freqHours)
+                data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
+                data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), [exp_var_get])
                 data = data_t - data_dt
             else:
-                data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dateformat.replace("%LL", str(forecast).zfill(2))}'), [exp_var_get]) # TESTING!!!
+                exp_filename_t = lead_time_replace(exp_filename, forecast)
+                data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
             
             # postprocessing??
             if postprocess != 'None':
@@ -101,8 +122,8 @@ def main(obs, case, exp):
             # plot original simus
             fig = plt.figure(0, figsize=(9. / 2.54, 9. / 2.54), clear = True)
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
-            PlotMapInAxis(ax, data_fp, simus_lat, simus_lon, extent = bounds, titleLeft = f'{model} [{exp}] (orig)\n', titleRight = f'\nValid: {init_time}+{str(forecast).zfill(2)} UTC', cbLabel = f'{exp_var_description} ({exp_var_units})', yLeftLabel = False, yRightLabel = True, cmap = colormaps[varRaw]['map'], norm = colormaps[varRaw]['norm'])
-            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{model}_{exp}_orig_{init_time}+{str(forecast).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+            PlotMapInAxis(ax, data_fp, simus_lat, simus_lon, extent = case_domain, titleLeft = f'{exp_model} [{exp}] (orig)\n', titleRight = f'\nValid: {init_time}+{str(forecast).zfill(2)} UTC', cbLabel = f'{var_verif_description} ({var_verif_units})', yLeftLabel = False, yRightLabel = True, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
+            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_orig_{init_time}+{str(forecast).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close(0)
 
             # regridding simus
@@ -115,8 +136,8 @@ def main(obs, case, exp):
             )
 
             # write netCDF
-            ds = BuildXarrayDataset(regridded_data, obs_lon, obs_lat, date_simus_ini + timedelta(hours = forecast), varName = varRaw, lonName = 'lon', latName = 'lat', descriptionNc = f'{model} - {exp} | {exp_var_description} - {init_time}+{str(forecast).zfill(2)}')
-            ds.to_netcdf(datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_regrid/{init_time}/{model}_{exp}_{varRaw}_{obsDB}grid_{init_time}+{str(forecast).zfill(2)}.nc'), compute='True')
+            ds = BuildXarrayDataset(regridded_data, obs_lon, obs_lat, date_simus_ini + timedelta(hours = forecast), varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'{exp_model} - {exp} | {var_verif_description} - {init_time}+{str(forecast).zfill(2)}')
+            ds.to_netcdf(datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(forecast).zfill(2)}.nc'), compute='True')
             print('... DONE')
     return 0
 

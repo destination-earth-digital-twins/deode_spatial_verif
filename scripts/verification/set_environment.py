@@ -10,7 +10,7 @@ def main(obs, case, exp):
     cwd = os.getcwd()
 
     # exp data
-    dataExp = LoadConfigFileFromYaml(f'config/config_{exp}.yaml')
+    dataExp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     
     # OBSERVATIONS
     os.chdir(f'{cwd}/OBSERVATIONS/')

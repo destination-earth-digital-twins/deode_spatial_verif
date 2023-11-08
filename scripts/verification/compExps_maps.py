@@ -16,6 +16,17 @@ from plots import PlotMapInAxis, PlotContourDomainInAxis, PlotBoundsInAxis
 freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
 colors_name = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
 
+def lead_time_replace(text, replace_with = '*'):
+    pattern = r'(%LL+)'
+    new_text = re.sub(pattern, lambda match: replace_function(match.group(0), replace_with), text)
+    return new_text
+
+def replace_function(text, replace_with):
+    if isinstance(replace_with, int):
+        return str(replace_with).zfill(len(text) - 1)
+    else:
+        return "*"
+
 def sorted_list_files(string):
     list_files = glob(string)
     list_files.sort()
@@ -26,9 +37,9 @@ def main(obs, case, exps):
     obs_db, var_verif = obs.split('_')
 
     # observation database info
-    config_obs_db = LoadConfigFileFromYaml(f'config/config_{obs_db}.yaml')
+    config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
     obs_filename = config_obs_db['format']['filename']
-    obs_fileformat = config_obs_db['format']['extension']
+    obs_fileformat = config_obs_db['format']['fileformat']
     if config_obs_db['vars'][var_verif]['postprocess'] == True:
         obs_var_get = var_verif
     else:
@@ -38,7 +49,7 @@ def main(obs, case, exps):
     print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get}')
 
     # Case bounds
-    config_case = LoadConfigFileFromYaml(f'config/config_{case}.yaml')
+    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
     case_domain = config_case['location']['NOzoom']
     print(f'Map bounds: {case_domain}')
     
@@ -46,8 +57,8 @@ def main(obs, case, exps):
     configs_exps, lead_times_inits_exps = {}, {}
     expLowRes, expHighRes = exps.split('-VS-')
     for exp in (expLowRes, expHighRes):
-        print(f'Load config file: config/config_{exp}.yaml')
-        configs_exps[exp] = LoadConfigFileFromYaml(f'config/config_{exp}.yaml')
+        print(f'Load config file: config/exp/config_{exp}.yaml')
+        configs_exps[exp] = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
         lead_times_inits_exps[exp] = {}
         files_fss = sorted_list_files(f"pickles/FSS/{obs}/{case}/{exp}/FSS_{configs_exps[exp]['model']['name']}_{exp}_{obs}_*.pkl")
         for file_fss in files_fss:
@@ -84,8 +95,9 @@ def main(obs, case, exps):
             expHighRes_file = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_regrid/{init_time}/{configs_exps[expHighRes]['model']['name']}_{expHighRes}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc")
             expHighRes_values = get_data_function['netCDF'](expHighRes_file, [var_verif,])
             values_databases[expHighRes].append(expHighRes_values.copy())
-            expHighRes_file_orig = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{configs_exps[expHighRes]['format']['filename'].replace('%LL', str(lead_time).zfill(2))}") # TESTING!!!
-            lat2D_expHighRes, lon2D_expHighRes = get_grid_function[configs_exps[expHighRes]['format']['extension']](expHighRes_file_orig)
+            expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], lead_time)
+            expHighRes_file_orig = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
+            lat2D_expHighRes, lon2D_expHighRes = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
 
             try:
                 if configs_exps[expLowRes]['vars'][var_verif]['accum'] == True:
@@ -124,17 +136,22 @@ def main(obs, case, exps):
             ax = fig.add_subplot(1, 3, iterator_axis + 1, projection = ccrs.PlateCarree())
             if iterator_axis == 1:
                 title_right = f"Valid: {config_case['dates']['ini']}-{config_case['dates']['end']} UTC"
+                title_color = 'black'
             else:
                 title_right = f'Valid: {init_time}+{common_lead_times[init_time][0]} up to +{common_lead_times[init_time][-1]} UTC'
+                title_color = colors_name[iterator]
             if var_verif == 'pcp':
                 key = 'Total'
-                PlotMapInAxis(ax, np.sum(values_databases[db], axis = 0), lat2D, lon2D, extent = case_domain, titleLeft = f'{db}\n', titleRight = f'\n{title_right}', cbLabel = f'{var_verif_description.replace("1", str(len(values_databases[db])))} ({var_verif_units})', yLeftLabel = bool_left_label, yRightLabel = bool_right_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
+                PlotMapInAxis(ax, np.sum(values_databases[db], axis = 0), lat2D, lon2D, extent = case_domain, titleLeft = f'{db}\n', titleRight = f'\n{title_right}', cbLabel = f'{var_verif_description.replace("1", str(len(values_databases[db])))} ({var_verif_units})', titleColorRight = title_color, yLeftLabel = bool_left_label, yRightLabel = bool_right_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
             elif var_verif == 'bt':
                 key = 'Min'
                 PlotMapInAxis(ax, np.min(values_databases[db], axis = 0), lat2D, lon2D, extent = case_domain, titleLeft = f'{db}\n', titleRight = f'\n{title_right}', cbLabel = f'Min. {var_verif_description} ({var_verif_units})', yLeftLabel = bool_left_label, yRightLabel = bool_right_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
             else:
                 key = 'Max'
                 PlotMapInAxis(ax, np.max(values_databases[db], axis = 0), lat2D, lon2D, extent = case_domain, titleLeft = f'{db}\n', titleRight = f'\n{title_right}', cbLabel = f'Max. {var_verif_description} ({var_verif_units})', yLeftLabel = bool_left_label, yRightLabel = bool_right_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
+            PlotBoundsInAxis(ax, verif_domain, text = 'verif', color = 'black')
+            if iterator_axis == 2:
+                PlotContourDomainInAxis(ax, lat2D_expHighRes, lon2D_expHighRes, text = init_time, color = colors_name[iterator])
         fig.savefig(f"PLOTS/main_plots/{case}/{key}_{var_verif}_{case}_{exps.replace('-VS-', '_')}_{obs_db}_{init_time}+{str(common_lead_times[init_time][0]).zfill(2)}_+{str(common_lead_times[init_time][-1]).zfill(2)}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close(1)
     

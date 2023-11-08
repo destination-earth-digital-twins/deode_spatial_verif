@@ -40,52 +40,52 @@ def PixelToDistanceStr(nPixels, resolution):
 
 def main(obs, case, exp):
     # OBS data: database + variable
-    obsDB, varRaw = obs.split('_')
+    obs_db, var_verif = obs.split('_')
 
     # observation database info
-    dataObs = LoadConfigFileFromYaml(f'config/config_{obsDB}.yaml')
-    obsFileName = dataObs['format']['filename']
-    obsFileFormat = dataObs['format']['extension']
-    if dataObs['vars'][varRaw]['postprocess'] == True:
-        obsVar = varRaw
+    config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
+    obs_filename = config_obs_db['format']['filename']
+    obs_fileformat = config_obs_db['format']['fileformat']
+    if config_obs_db['vars'][var_verif]['postprocess'] == True:
+        obs_var_get = var_verif
     else:
-        obsVar = dataObs['vars'][varRaw]['var']
-    obsRes = dataObs['vars'][varRaw]['res']
-    print(f'Load config file for {obsDB} database: \n file name: {obsFileName}; file format: {obsFileFormat}; variable to extract: {obsVar}')
+        obs_var_get = config_obs_db['vars'][var_verif]['var']
+    obs_res = config_obs_db['vars'][var_verif]['res']
+    var_verif_units = config_obs_db['vars'][var_verif]['units']
+    print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; variable to extract: {obs_var_get}')
     
     # Case data: initial date + end date
-    dataCase = LoadConfigFileFromYaml(f'config/config_{case}.yaml')
-    date_ini = datetime.strptime(dataCase['dates']['ini'], '%Y%m%d%H')
-    date_end = datetime.strptime(dataCase['dates']['end'], '%Y%m%d%H')
-    print(f'Load config file for {case} case study: \n init: {dataCase["dates"]["ini"]}; end: {dataCase["dates"]["end"]}; verification domains: {dataCase["verif_domain"]}')
+    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
+    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
+    print(f'Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}; verification domains: {config_case["verif_domain"]}')
 
     # exp data
-    dataExp = LoadConfigFileFromYaml(f'config/config_{exp}.yaml')
-    model = dataExp['model']['name']
-    is_negative = dataExp['vars'][varRaw]['negative_values']
-    exp_var_units = dataExp['vars'][varRaw]['units']
-    print(f'Load config file for {exp} simulation: \n model: {model}; variable to extract: {varRaw} ({dataExp["vars"][varRaw]["description"]}); units: {exp_var_units}')
+    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    exp_model = config_exp['model']['name']
+    is_negative = config_exp['vars'][var_verif]['negative_values']
+    print(f'Load config file for {exp} simulation: \n model: {exp_model}; variable to extract: {var_verif} ({config_obs_db["vars"][var_verif]["description"]}); units: {var_verif_units}')
 
     # FSS & SAL params
-    thresh = dataObs['vars'][varRaw]['FSS']['thresholds']
-    scales = dataObs['vars'][varRaw]['FSS']['scales']
-    thr_factor = dataObs['vars'][varRaw]['SAL']['f']
-    thr_quantile = dataObs['vars'][varRaw]['SAL']['q']
-    detect_params = dataObs['vars'][varRaw]['SAL']['tstorm_kwargs']
+    thresh = config_obs_db['vars'][var_verif]['FSS']['thresholds']
+    scales = config_obs_db['vars'][var_verif]['FSS']['scales']
+    thr_factor = config_obs_db['vars'][var_verif]['SAL']['f']
+    thr_quantile = config_obs_db['vars'][var_verif]['SAL']['q']
+    detect_params = config_obs_db['vars'][var_verif]['SAL']['tstorm_kwargs']
     if detect_params['max_num_features'] == 'None':
         detect_params.update({'max_num_features': None})
     
     # FSS columns and rows names
-    fss_nameCols = [PixelToDistanceStr(nPixel, obsRes) for nPixel in scales]
+    fss_nameCols = [PixelToDistanceStr(nPixel, obs_res) for nPixel in scales]
     if is_negative == True:
-        fss_nameRows = [f'-{thr} {exp_var_units}' for thr in thresh]
+        fss_nameRows = [f'-{thr} {var_verif_units}' for thr in thresh]
     else:
-        fss_nameRows = [f'{thr} {exp_var_units}' for thr in thresh]
+        fss_nameRows = [f'{thr} {var_verif_units}' for thr in thresh]
 
     # init times of nwp
-    for init_time in dataExp['inits'].keys():
+    for init_time in config_exp['inits'].keys():
         verif_domain_ini = None
-        date_exp_end = dataExp['inits'][init_time]['fcast_horiz']
+        date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
     
         # set lead times from experiments
         date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
@@ -95,7 +95,7 @@ def main(obs, case, exp):
         else:
             forecast_ini = 0
         forecast_horiz = int((date_simus_end - date_simus_ini).total_seconds() / 3600.0)
-        if dataExp['vars'][varRaw]['accum'] == True:
+        if config_exp['vars'][var_verif]['accum'] == True:
             forecast_ini += 1
             forecast_horiz += 1
         print(f'Forecast from {exp}: {init_time}+{str(forecast_ini).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_ini), "%Y%m%d%H")}) up to {init_time}+{str(forecast_horiz).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_horiz), "%Y%m%d%H")})')
@@ -106,18 +106,18 @@ def main(obs, case, exp):
 
         listFSS_fcst = []
         for forecast in range(forecast_ini, forecast_horiz + 1, freqHours):
-            file_obs = datetime.strftime(date_simus_ini + timedelta(hours = forecast), f'OBSERVATIONS/data_{obs}/{case}/{obsFileName}')
-            data_obs = get_data_function[obsFileFormat](file_obs, [obsVar])
-            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{model}_{exp}_{varRaw}_{obsDB}grid_{init_time}+{str(forecast).zfill(2)}.nc'
-            data_nwp = get_data_function['netCDF'](file_nwp, [varRaw])
+            file_obs = datetime.strftime(date_simus_ini + timedelta(hours = forecast), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
+            data_obs = get_data_function[obs_fileformat](file_obs, [obs_var_get])
+            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(forecast).zfill(2)}.nc'
+            data_nwp = get_data_function['netCDF'](file_nwp, [var_verif])
             lat2D, lon2D = get_grid_function['netCDF'](file_nwp) # it's the same grid for both OBS and exp
 
             # set verif domain
             try:
-                if dataExp['vars'][varRaw]['accum'] == True:
-                    verif_domain = dataCase['verif_domain'][datetime.strftime(date_simus_ini + timedelta(hours = forecast - 1), '%Y%m%d%H')] # namefiles from accum vars have a delay respect verif_domain timesteps from dataCase
+                if config_exp['vars'][var_verif]['accum'] == True:
+                    verif_domain = config_case['verif_domain'][datetime.strftime(date_simus_ini + timedelta(hours = forecast - 1), '%Y%m%d%H')] # namefiles from accum vars have a delay respect verif_domain timesteps from config_case
                 else:
-                    verif_domain = dataCase['verif_domain'][datetime.strftime(date_simus_ini + timedelta(hours = forecast), '%Y%m%d%H')]
+                    verif_domain = config_case['verif_domain'][datetime.strftime(date_simus_ini + timedelta(hours = forecast), '%Y%m%d%H')]
                 verif_domain_ini = verif_domain
             except KeyError:
                 if verif_domain_ini is not None:
@@ -134,11 +134,11 @@ def main(obs, case, exp):
             if is_negative == True:
                 data_nwp_common = -1.0 * data_nwp_common.copy()
                 data_obs_common = -1.0 * data_obs_common.copy()
-                cmap = colormaps[f'inverse_{varRaw}']['map']
-                norm = colormaps[f'inverse_{varRaw}']['norm']
+                cmap = colormaps[f'inverse_{var_verif}']['map']
+                norm = colormaps[f'inverse_{var_verif}']['norm']
             else:
-                cmap = colormaps[varRaw]['map']
-                norm = colormaps[varRaw]['norm']
+                cmap = colormaps[var_verif]['map']
+                norm = colormaps[var_verif]['norm']
             
             # FSS at each lead time
             score[str(forecast).zfill(2)] = {}
@@ -152,8 +152,8 @@ def main(obs, case, exp):
 
             # plot FSS at each lead time
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-            PlotFSSInAxis(ax, dictFSS[str(forecast).zfill(2)].round(2), title = f'FSS plot \n{model} [{exp}] | {obs} \nValid: {init_time}+{str(forecast).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)
+            PlotFSSInAxis(ax, dictFSS[str(forecast).zfill(2)].round(2), title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(forecast).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
+            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)
             plt.close()
 
             # SAL at each lead time
@@ -177,24 +177,24 @@ def main(obs, case, exp):
             if len(dfSALrow.dropna()) > 0:
                 with sns.axes_style('darkgrid'):
                     fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-                    PlotSALinAxis(ax, dfSAL.loc[str(forecast).zfill(2), 'Structure'], dfSAL.loc[str(forecast).zfill(2), 'Amplitude'], dfSAL.loc[str(forecast).zfill(2), 'Location'], title = f'SAL plot \n{model} [{exp}] | {obs} \nValid: {init_time}+{forecast}')
-                    fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)   
+                    PlotSALinAxis(ax, dfSAL.loc[str(forecast).zfill(2), 'Structure'], dfSAL.loc[str(forecast).zfill(2), 'Amplitude'], dfSAL.loc[str(forecast).zfill(2), 'Location'], title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{forecast}')
+                    fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)   
                     plt.close()
         
         # plot and save FSS and SAL verifications (mean and all, respectively)
         dfFSS_mean = pd.DataFrame(np.nanmean(listFSS_fcst, axis = 0), index = dictFSS[tuple(dictFSS.keys())[0]].index, columns = dictFSS[tuple(dictFSS.keys())[0]].columns)
         fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-        PlotFSSInAxis(ax, dfFSS_mean.round(2), title = f'FSS plot \n{model} [{exp}] | {obs} \nValid: {init_time}+{str(forecast_ini).zfill(2)}-{init_time}+{str(forecast_horiz).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
-        fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{model}_{exp}_{obs}_{init_time}_mean.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        PlotFSSInAxis(ax, dfFSS_mean.round(2), title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(forecast_ini).zfill(2)}-{init_time}+{str(forecast_horiz).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
+        fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}_mean.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close()
-        SavePickle(dictFSS, f'pickles/FSS/{obs}/{case}/{exp}/FSS_{model}_{exp}_{obs}_{init_time}')
+        SavePickle(dictFSS, f'pickles/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}')
         
         with sns.axes_style('darkgrid'):
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-            PlotSALinAxis(ax, dfSAL.dropna()['Structure'].values, dfSAL.dropna()['Amplitude'].values, dfSAL.dropna()['Location'].values, title = f'SAL plot \n{model} [{exp}] | {obs} \nValid: {init_time}+{str(forecast_ini).zfill(2)}-{init_time}+{str(forecast_horiz).zfill(2)}')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{model}_{exp}_{obs}_{init_time}_all.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
+            PlotSALinAxis(ax, dfSAL.dropna()['Structure'].values, dfSAL.dropna()['Amplitude'].values, dfSAL.dropna()['Location'].values, title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(forecast_ini).zfill(2)}-{init_time}+{str(forecast_horiz).zfill(2)}')
+            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}_all.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
             plt.close()
-            SavePickle(dfSAL, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{model}_{exp}_{obs}_{init_time}')
+            SavePickle(dfSAL, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}')
 
         # violin plot FSS
         with sns.axes_style('whitegrid'):
@@ -208,19 +208,19 @@ def main(obs, case, exp):
                 df = pd.DataFrame(fssValuesFixedThres)
                 ax = fig.add_subplot(len(thresh), 1, iterator + 1)
                 if iterator == 0:
-                    PlotViolinInAxis(ax, df, title = f'FSS distribution - {model} | {exp} | {obs} | {init_time}', yLabel = f'FSS {row}')
+                    PlotViolinInAxis(ax, df, title = f'FSS distribution - {exp_model} | {exp} | {obs} | {init_time}', yLabel = f'FSS {row}')
                 elif iterator == (len(thresh) - 1):
                     PlotViolinInAxis(ax, df, xLabel = f'Scale', yLabel = f'FSS {row}')
                 else:
                     PlotViolinInAxis(ax, df, yLabel = f'FSS {row}')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{model}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
+            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{exp_model}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close()
         
         # violin plot SAL
         with sns.axes_style('whitegrid'):
             fig, ax = plt.subplots(figsize=(14. / 2.54, 6.0 / 2.54), clear = True)
-            PlotViolinInAxis(ax, dfSAL, title = f'SAL distribution - {model} | {exp} | {obs} | {init_time}', yLabel = 'SAL', yLim = [-2.1, 2.1])
-            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{model}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
+            PlotViolinInAxis(ax, dfSAL, title = f'SAL distribution - {exp_model} | {exp} | {obs} | {init_time}', yLabel = 'SAL', yLim = [-2.1, 2.1])
+            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{exp_model}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close()
     return 0
 

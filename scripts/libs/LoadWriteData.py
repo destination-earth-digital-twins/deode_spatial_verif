@@ -66,10 +66,11 @@ def GetVarsFromGrib(gribFile, listVar):
 '''
 def GetMsgFromNameVar(filename, var):
     #level_type = ['hybrid', 'heightAboveGround', 'isobaricInhPa', 'entireAtmosphere']
-    var_level_type = dict([('tp', 'heightAboveGround'), ('refl', 'heightAboveGround')])
+    var_level_type = dict([('tp', 'heightAboveGround'), ('bt', ''), ('refl', 'heightAboveGround')])
+    var_level_value = dict([('tp', ''), ('bt', ''), ('refl', '1000')])
     
     #var = 'refl'
-    level_value = '1000'
+    #level_value = '1000'
     
     #for fc in range(1,2):
     #filename = '/home/sp4h/SCRATCH/hm_home/{}/archive/{}/fc{}+{:0>3}grib2_fp'.format(exp, run_1, run_2, fc)
@@ -81,7 +82,7 @@ def GetMsgFromNameVar(filename, var):
     grep_commands = [
         "grep -n '{}'".format(var),
         "grep '{}'".format(var_level_type[var]),
-        "grep '{}'".format(level_value)
+        "grep '{}'".format(var_level_value[var])
     ]
 
     # Combione all commands into a single string using the pipe symbol '|'

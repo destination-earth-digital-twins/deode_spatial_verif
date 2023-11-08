@@ -1,0 +1,45 @@
+'model':
+    'name': 'HARMONIE-AROME'
+'format':
+    'filepaths': ['/home/sp4h/SCRATCH/hm_home/%exp/archive/%Y/%m/%d/%H/',]
+    'filename': 'fc%Y%m%d%H+%LLLgrib2_fp'
+    'fileformat': 'Grib2'
+'inits':
+    '2022050200':
+        'path': 0
+        'fcast_horiz': '2022050323'
+    '2022050206':
+        'path': 0
+        'fcast_horiz': '2022050323'
+    '2022050212':
+        'path': 0
+        'fcast_horiz': '2022050323'
+    '2022050218':
+        'path': 0
+        'fcast_horiz': '2022050323'
+    '2022050300':
+        'path': 0
+        'fcast_horiz': '2022050323'
+    '2022050306':
+        'path': 0
+        'fcast_horiz': '2022050323'
+    '2022050312':
+        'path': 0
+        'fcast_horiz': '2022050323'
+'vars':
+    'pcp':
+        'var': 315
+        'accum': True
+        'postprocess': 'None'
+        'negative_values': False
+    'refl':
+        'var': 194
+        'accum': False
+        'postprocess': 'Z_dBZ'
+        'negative_values': False
+    'lat':
+        'var': 'lat'
+        'description': 'latitude coordinates in degrees'
+    'lon':
+        'var': 'lon'
+        'description': 'longitude coordinates in degrees'

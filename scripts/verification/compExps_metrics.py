@@ -30,7 +30,7 @@ def main(obs, case, exps):
     fss, sal = {}, {}
     for dictionary, stat in zip((fss, sal), ('FSS', 'SAL')):
         for exp in (expLowRes, expHighRes):
-            config_exp = LoadConfigFileFromYaml(f'config/config_{exp}.yaml')
+            config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
             dictionary[exp] = {}
             files_statistic = sorted_list_files(f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{config_exp['model']['name']}_{exp}_{obs}_*.pkl")
             for file_pickl in files_statistic:
@@ -73,7 +73,7 @@ def main(obs, case, exps):
                 fss_scores.append(fss[exp][init_time][lead_time].values.copy())
         ax = fig.add_subplot(1, 2, iterator + 1)
         PlotFSSInAxis(ax, pd.DataFrame(np.nanmean(fss_scores, axis = 0).round(2), columns = namecols_fss, index = namerows_fss), title = f'FSS plot | {exp} | {obs}', xLabel = 'Scale', yLabel = 'Threshold')
-    fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exp.replace('-VS', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+    fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exps.replace('-VS', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
     plt.close()
     
     # figure FSS distribution
