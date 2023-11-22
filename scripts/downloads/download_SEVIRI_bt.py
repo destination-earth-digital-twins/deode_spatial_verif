@@ -18,16 +18,17 @@ from PostProcess import IrradianceToBrightnessTemperature
 
 obs = 'SEVIRI_bt'
 
-def make_dir_obs(obs_db, case):
+def make_dir_obs(obs, case):
     cwd = os.getcwd()
     os.chdir(f'../../OBSERVATIONS/')
-    if os.path.exists(f'data_{obs_db}/') == False:
-        os.mkdir(f'data_{obs_db}')
-    os.chdir(f'data_{obs_db}/')
+    if os.path.exists(f'data_{obs}/') == False:
+        os.mkdir(f'data_{obs}')
+    os.chdir(f'data_{obs}/')
     if os.path.exists(f'{case}/') == False:
         os.mkdir(case)
+        print(f'INFO: ../../OBSERVATIONS/data_{obs}/{case}/ directory created')
     os.chdir(cwd)
-    obs_path = f'../../OBSERVATIONS/data_{obs_db}/{case}/'
+    obs_path = f'../../OBSERVATIONS/data_{obs}/{case}/'
     return obs_path
 
 def main(case, consumer_key, consumer_secret):
@@ -45,24 +46,15 @@ def main(case, consumer_key, consumer_secret):
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     bounds_W, bounds_E, bounds_S, bounds_N = config_case['location']['NOzoom']
     
-    obs_path = make_dir_obs(obs_db, case)
-
-    #leemos las credenciales que nos permitiran acceder a los datos
-    #estas credenciales las podeis leer de un archivo 'credenciales.json' o ponerlas en el script
-    #keys = json.load(open('credenciales.json','r'))
-    #consumer_key = keys['consumer_key']
-    #consumer_secret = keys['consumer_secret']
+    obs_path = make_dir_obs(obs, case)
+    
     credentials = (consumer_key, consumer_secret)
     token = eumdac.AccessToken(credentials)
     print(f"This token {token} expires {token.expiration}")
     
-    #Vamos a customizar el producto High Rate SEVIRI Level 1.5 Image Data - MSG - 0 degree
-    #Seleccionamos por ejemplo el ultimo producto disponible
     datastore = eumdac.DataStore(token)
     datatailor = eumdac.DataTailor(token)
     selected_collection = datastore.get_collection('EO:EUM:DAT:MSG:HRSEVIRI')
-
-    #latest = selected_collection.search().first()
 
     # Set sensing start and end time
     start = date_ini - timedelta(hours = 1)
@@ -86,8 +78,10 @@ def main(case, consumer_key, consumer_secret):
     print(" ")
     for product in products:
         print("Date: {} {}z - Product: {}".format(str(product)[24:32],str(product)[32:36],product))
-
-        if str(product)[34:36] == "57":
+        date_product = datetime.strptime(str(product).split('-')[-2].split('.')[0], '%Y%m%d%H%M%S')
+        file_to_find = datetime.strftime(date_product, f'{obs_path}{case}_SEVIRI_bt_%Y%m%d-%H%M_raw.nc')
+        
+        if ((str(product)[34:36] == "57") & (os.path.isfile(file_to_find) == False)):
 
             # Send the customisation to Data Tailor Web Services
             customisation = datatailor.new_customisation(product, chain)
@@ -157,7 +151,10 @@ def main(case, consumer_key, consumer_secret):
         values_bt = IrradianceToBrightnessTemperature(values_ir)
         lat2D, lon2D = GetLatLon2DfromNetCDF(file)
         dataset = BuildXarrayDataset(values_bt, lon2D, lat2D, date_process, varName = var_verif, descriptionNc = datetime.strftime(date_process, f'SEVIRI | Brightness Temperature - %Y%m%d%H'))
-        dataset.to_netcdf(datetime.strftime(date_process, f'{obs_path}{obs_filename}'), compute='True')
+        file_new = datetime.strftime(date_process, f'{obs_path}{obs_filename}')
+        print(f'INFO:saving processed values in {file_new}')
+        dataset.to_netcdf(file_new, compute='True')
+        print(f'INFO:removing {file}')
         os.remove(file)
     return 0
 

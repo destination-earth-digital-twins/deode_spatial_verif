@@ -3,6 +3,7 @@
 
 import os, sys
 sys.path.append('scripts/libs/')
+import re
 import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
@@ -60,9 +61,8 @@ def main(obs, case, exps):
         print(f'Load config file: config/exp/config_{exp}.yaml')
         configs_exps[exp] = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
         lead_times_inits_exps[exp] = {}
-        files_fss = sorted_list_files(f"pickles/FSS/{obs}/{case}/{exp}/FSS_{configs_exps[exp]['model']['name']}_{exp}_{obs}_*.pkl")
-        for file_fss in files_fss:
-            init_time = file_fss.split('_')[-1].split('.')[0]
+        for init_time in configs_exps[exp]['inits'].keys():
+            file_fss = f"pickles/FSS/{obs}/{case}/{exp}/FSS_{configs_exps[exp]['model']['name']}_{exp}_{obs}_{init_time}.pkl"
             fss_scores = LoadPickle(file_fss)
             lead_times_inits_exps[exp][init_time] = tuple(fss_scores.keys())
 
@@ -95,7 +95,7 @@ def main(obs, case, exps):
             expHighRes_file = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_regrid/{init_time}/{configs_exps[expHighRes]['model']['name']}_{expHighRes}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc")
             expHighRes_values = get_data_function['netCDF'](expHighRes_file, [var_verif,])
             values_databases[expHighRes].append(expHighRes_values.copy())
-            expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], lead_time)
+            expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], int(lead_time))
             expHighRes_file_orig = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
             lat2D_expHighRes, lon2D_expHighRes = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
 

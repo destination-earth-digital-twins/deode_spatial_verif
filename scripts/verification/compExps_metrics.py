@@ -32,9 +32,8 @@ def main(obs, case, exps):
         for exp in (expLowRes, expHighRes):
             config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
             dictionary[exp] = {}
-            files_statistic = sorted_list_files(f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{config_exp['model']['name']}_{exp}_{obs}_*.pkl")
-            for file_pickl in files_statistic:
-                init_time = file_pickl.split('_')[-1].split('.')[0]
+            for init_time in config_exp['inits'].keys():
+                file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{config_exp['model']['name']}_{exp}_{obs}_{init_time}.pkl"
                 dictionary[exp][init_time] = LoadPickle(file_pickl)
 
     # common inits & lead times from FSS pickles

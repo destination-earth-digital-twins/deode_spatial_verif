@@ -14,7 +14,6 @@ from dicts import get_grid_function, get_data_function, colormaps, postprocess_f
 from plots import PlotMapInAxis
 
 freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
-old_inits = ['2020091506', '2020091512', '2020091518', '2020091606', '2020091612', '2020091618'] # TESTING!!!
 
 def lead_time_replace(text, replace_with = '*'):
     pattern = r'(%LL+)'
@@ -63,10 +62,6 @@ def main(obs, case, exp):
     
     # init times of nwp
     for init_time in config_exp['inits'].keys():
-        # INIT OF TESTING!!!!
-        if np.isin(init_time, old_inits).item() == True:
-            exp_var_get = 315
-        # END OF TESTING!!!
         date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
         
         # set lead times from experiments
@@ -80,7 +75,7 @@ def main(obs, case, exp):
         if is_accum == True:
             forecast_ini += 1
             forecast_horiz += 1
-        print(f'Forecast from {exp}: {init_time}+{str(forecast_ini).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_ini), "%Y%m%d%H")}) up to {init_time}+{str(forecast_horiz).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_horiz), "%Y%m%d%H")})')
+        print(f'Lead times from {exp}: {init_time}+{str(forecast_ini).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_ini), "%Y%m%d%H")}) up to {init_time}+{str(forecast_horiz).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_horiz), "%Y%m%d%H")})')
         
         # link simus to SIMULATIONS/
         filesPath = exp_filepaths[config_exp['inits'][init_time]['path']].replace('%exp', exp)
@@ -142,4 +137,4 @@ def main(obs, case, exp):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]))

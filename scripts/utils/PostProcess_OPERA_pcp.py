@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../libs/')
 import h5py
@@ -10,20 +11,22 @@ from LoadWriteData import LoadConfigFileFromYaml, BuildXarrayDataset
 obs = 'OPERA_pcp'
 obs_filename_raw = 'ODC.LAM_%Y%m%d%H%M_000100.h5'
 
-def make_dir_obs(obs_db, case):
+def make_dir_obs(obs, case):
     cwd = os.getcwd()
     os.chdir(f'../../OBSERVATIONS/')
-    if os.path.exists(f'data_{obs_db}/') == False:
-        os.mkdir(f'data_{obs_db}')
-    os.chdir(f'data_{obs_db}/')
+    if os.path.exists(f'data_{obs}/') == False:
+        os.mkdir(f'data_{obs}')
+    os.chdir(f'data_{obs}/')
     if os.path.exists(f'{case}/') == False:
         os.mkdir(case)
+        print(f'INFO: ../../OBSERVATIONS/data_{obs}/{case}/ directory created')
     os.chdir(cwd)
-    obs_path = f'../../OBSERVATIONS/data_{obs_db}/{case}/'
+    obs_path = f'../../OBSERVATIONS/data_{obs}/{case}/'
     return obs_path
 
 def get_vars_from_OPERA(filename, list_vars):
     # list_var must be a list with the "path" of the var join by ':' character
+    print(f'INFO:reading {filename}')
     hf = h5py.File(filename, 'r')
     list_values = []
     for path in list_vars:
@@ -31,6 +34,7 @@ def get_vars_from_OPERA(filename, list_vars):
         grp = hf.get(groups[0])
         for group in groups[1:]:
             grp = grp.get(group)
+        print(f'INFO:get {var} values')
         list_values.append(grp.get(var)[:].copy())
     hf.close()
     if len(list_values) == 1:
@@ -39,6 +43,7 @@ def get_vars_from_OPERA(filename, list_vars):
         return list_values
 
 def get_latlon2D_from_OPERA(filename):
+    print(f'INFO:reading {filename}')
     hf = h5py.File(filename, 'r')
     # get projection params
     where = hf.get('where')
@@ -55,6 +60,7 @@ def get_latlon2D_from_OPERA(filename):
     yi = np.linspace(int(np.round(ll_y, 0)), int(np.round(ur_y, 0)), where.attrs.get('ysize'))
     x, y = np.meshgrid(xi, yi)
     # reproject to lat-lon coordinates
+    print(f'INFO:get lat-lon coordinates')
     lon2D, lat2D = projection(x, y, inverse = True)
     hf.close()
     return lat2D.copy(), lon2D.copy()
@@ -73,7 +79,7 @@ def main(path_OPERA_raw, case):
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H') + timedelta(hours = 1)
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H') + timedelta(hours = 1)
 
-    obs_path = make_dir_obs(obs_db, case)
+    obs_path = make_dir_obs(obs, case)
     
     dates = pd.date_range(date_ini, date_end, freq = '1H').to_pydatetime()
     for date in dates:
@@ -81,7 +87,9 @@ def main(path_OPERA_raw, case):
         values = get_vars_from_OPERA(file_obs, [obs_var_get,])
         lat_obs, lon_obs = get_latlon2D_from_OPERA(file_obs)
         ds = BuildXarrayDataset(np.flip(values, axis = 0), lon_obs, lat_obs, date, varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'OPERA | 1-hour accumulated precipitation | {datetime.strftime(date - timedelta(hours = 1), "%Y%m%d%H")}-{datetime.strftime(date, "%Y%m%d%H")}')
-        ds.to_netcdf(datetime.strftime(date, f'{obs_path}{obs_filename}'), compute='True')
+        file_new = datetime.strftime(date, f'{obs_path}{obs_filename}')
+        print(f'INFO:saving processed values in {file_new}')
+        ds.to_netcdf(file_new, compute='True')
     return 0
 
 if __name__ == '__main__':

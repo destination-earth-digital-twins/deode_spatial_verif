@@ -21,7 +21,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **filename**. \[str\]. Name of the observation file with extension, if any. It must contain the required characters to indicate the date format used by datetime.
 
-    -   **extension**. \[str\]. File format. Possible values are: netCDF, Grib2.
+    -   **fileformat**. \[str\]. File format of the observation file. Possible values are: netCDF, Grib2.
 
 -   vars. Information regarding the variable to be used for verification.
 
@@ -81,7 +81,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **filename**. \[str\]. Name of the experiment file with extension, if any. It must contain the required characters to indicate the date format used by datetime. The lead time must be indicated as "%LLL".
 
-    -   **extension**. \[str\]. File format. Possible values are: netCDF, Grib2.
+    -   **fileformat**. \[str\]. File format of the experiment file. Possible values are: netCDF, Grib2.
 
 -   inits. Initializations of the experiment to be used in the spatial verification.
 
@@ -95,7 +95,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **\<var_verif\>**. \[str\]. Variable name to be verified. Possible values are: pcp (precipitation), bt (brightness temperature), refl (maximum reflectivity).
 
-        -   **var**. \[int or str\]. Variable name to get from the experiment files. If \"format\": \"extension\" is "Grib2", \"var\" must be an integer with the message associated to the verification variable.
+        -   **var**. \[int or str\]. Variable name to get from the experiment files. If \"format\": \"extension\" is "Grib2", \"var\" can be an integer with the message associated to the verification variable or a string in \"\<short_name\>\|\<level\>\" format.
 
         -   **accum**. \[bool\]. Boolean value. It indicates whether \"var\" is cumulative or not. If True, the previous instant is subtracted from the current instant to compute the current hourly value.
 
@@ -169,7 +169,7 @@ These files perform the following tasks:
 
 *SEVIRI*
 
-1.  Download netCDF files with the closest "pasada" to the hours to be verified of the event (%H:57) for a region 5º larger than the plotting domain of the case study.
+1.  Download netCDF files with the closest scan to the hours to be verified of the event (%H:57) for a region 5º larger than the plotting domain of the case study.
 
 2.  Compute the brightness temperature from the irradiance of channel 9 (see scripts/libs/PostProcess.IrradianceToBrightnessTemperature).
 
