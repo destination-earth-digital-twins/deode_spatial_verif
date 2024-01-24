@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import re
 import os, sys
 sys.path.append('scripts/libs/')
 import numpy as np
@@ -9,22 +8,13 @@ import cartopy.crs as ccrs
 from datetime import datetime, timedelta
 from scipy.interpolate import griddata
 from matplotlib import pyplot as plt
+
 from LoadWriteData import LoadConfigFileFromYaml, BuildXarrayDataset
+from times import set_lead_times, lead_time_replace
 from dicts import get_grid_function, get_data_function, colormaps, postprocess_function
 from plots import PlotMapInAxis
 
 freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
-
-def lead_time_replace(text, replace_with = '*'):
-    pattern = r'(%LL+)'
-    new_text = re.sub(pattern, lambda match: replace_function(match.group(0), replace_with), text)
-    return new_text
-
-def replace_function(text, replace_with):
-    if isinstance(replace_with, int):
-        return str(replace_with).zfill(len(text) - 1)
-    else:
-        return "*"
 
 def main(obs, case, exp):
     # OBS data: database + variable
@@ -67,15 +57,10 @@ def main(obs, case, exp):
         # set lead times from experiments
         date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
         date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
-        if date_simus_ini < date_ini:
-            forecast_ini = int((date_ini - date_simus_ini).total_seconds() / 3600.0)
-        else:
-            forecast_ini = 0
-        forecast_horiz = int((date_simus_end - date_simus_ini).total_seconds() / 3600.0)
+        lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
         if is_accum == True:
-            forecast_ini += 1
-            forecast_horiz += 1
-        print(f'Lead times from {exp}: {init_time}+{str(forecast_ini).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_ini), "%Y%m%d%H")}) up to {init_time}+{str(forecast_horiz).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_horiz), "%Y%m%d%H")})')
+            lead_times = lead_times.copy() + 1
+        print(f'Lead times from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1].item()).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
         
         # link simus to SIMULATIONS/
         filesPath = exp_filepaths[config_exp['inits'][init_time]['path']].replace('%exp', exp)
@@ -88,24 +73,24 @@ def main(obs, case, exp):
             obs_file = datetime.strftime(date_ini + timedelta(hours = 1), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
         else:
             obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-        exp_filename_t = lead_time_replace(exp_filename, forecast_ini)
+        exp_filename_t = lead_time_replace(exp_filename, lead_times[0].item())
         simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
         obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
         simus_lat, simus_lon = get_grid_function[exp_fileformat](simus_file)
         print(f'Lat lon coordinates from {obs_db}: \n --- lat --- \n{obs_lat} \n --- lon --- \n{obs_lon}')
         print(f'Lat lon coordinates from {exp}: \n --- lat --- \n{simus_lat} \n --- lon --- \n{simus_lon}')
 
-        for forecast in range(forecast_ini, forecast_horiz + 1, freqHours):
+        for lead_time in lead_times:
             # get original simus
             if is_accum == True:
                 # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
-                exp_filename_t = lead_time_replace(exp_filename, forecast)
-                exp_filename_dt = lead_time_replace(exp_filename, forecast - freqHours)
+                exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
+                exp_filename_dt = lead_time_replace(exp_filename, lead_time.item() - freqHours)
                 data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
                 data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), [exp_var_get])
                 data = data_t - data_dt
             else:
-                exp_filename_t = lead_time_replace(exp_filename, forecast)
+                exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
                 data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
             
             # postprocessing??
@@ -117,12 +102,12 @@ def main(obs, case, exp):
             # plot original simus
             fig = plt.figure(0, figsize=(9. / 2.54, 9. / 2.54), clear = True)
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
-            PlotMapInAxis(ax, data_fp, simus_lat, simus_lon, extent = case_domain, titleLeft = f'{exp_model} [{exp}] (orig)\n', titleRight = f'\nValid: {init_time}+{str(forecast).zfill(2)} UTC', cbLabel = f'{var_verif_description} ({var_verif_units})', yLeftLabel = False, yRightLabel = True, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
-            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_orig_{init_time}+{str(forecast).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+            PlotMapInAxis(ax, data_fp, simus_lat, simus_lon, extent = case_domain, titleLeft = f'{exp_model} [{exp}] (orig)\n', titleRight = f'\nValid: {init_time}+{str(lead_time).zfill(2)} UTC', cbLabel = f'{var_verif_description} ({var_verif_units})', yLeftLabel = False, yRightLabel = True, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
+            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close(0)
 
             # regridding simus
-            print(f'Regridding {init_time}+{str(forecast).zfill(2)} time step from {exp} (original grid)')
+            print(f'Regridding {init_time}+{str(lead_time).zfill(2)} time step from {exp} (original grid)')
             regridded_data = griddata(
                 (simus_lon.flatten(), simus_lat.flatten()),
                 data_fp.flatten(),
@@ -131,8 +116,8 @@ def main(obs, case, exp):
             )
 
             # write netCDF
-            ds = BuildXarrayDataset(regridded_data, obs_lon, obs_lat, date_simus_ini + timedelta(hours = forecast), varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'{exp_model} - {exp} | {var_verif_description} - {init_time}+{str(forecast).zfill(2)}')
-            ds.to_netcdf(datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(forecast).zfill(2)}.nc'), compute='True')
+            ds = BuildXarrayDataset(regridded_data, obs_lon, obs_lat, date_simus_ini + timedelta(hours = lead_time.item()), varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'{exp_model} - {exp} | {var_verif_description} - {init_time}+{str(lead_time).zfill(2)}')
+            ds.to_netcdf(datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'), compute='True')
             print('... DONE')
     return 0
 

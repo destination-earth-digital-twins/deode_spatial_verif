@@ -72,7 +72,7 @@ def main(obs, case, exps):
                 fss_scores.append(fss[exp][init_time][lead_time].values.copy())
         ax = fig.add_subplot(1, 2, iterator + 1)
         PlotFSSInAxis(ax, pd.DataFrame(np.nanmean(fss_scores, axis = 0).round(2), columns = namecols_fss, index = namerows_fss), title = f'FSS plot | {exp} | {obs}', xLabel = 'Scale', yLabel = 'Threshold')
-    fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exps.replace('-VS', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+    fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
     plt.close()
     
     # figure FSS distribution
@@ -94,7 +94,7 @@ def main(obs, case, exps):
                 fss_comp_exps.rename(columns = {f'{namecol}_x': expLowRes, f'{namecol}_y': expHighRes}, inplace = True)
                 
                 ax = fig.add_subplot(len(namerows_fss), len(namecols_fss), iterator_row * len(namecols_fss) + iterator_col + 1)
-                if ((iterator_col == 0) & (iterator_row == (len(namecols_fss) - 1))):
+                if ((iterator_col == 0) & (iterator_row == (len(namerows_fss) - 1))):
                     PlotViolinInAxis(ax, fss_comp_exps, xLabel = namecol, yLabel = namerow)
                 elif iterator_col == 0:
                     PlotViolinInAxis(ax, fss_comp_exps, yLabel = namerow)
@@ -105,20 +105,24 @@ def main(obs, case, exps):
                 ax.set_yticks(np.arange(0.0, 1.25, 0.25))
                 ax.tick_params(axis = 'x', length = 0.0, labelbottom = False)
                 # if two data series are (not) statisticaly different --> green (red) contour
-                pValue = wilcoxon(fss_comp_exps.dropna()[expLowRes].values, fss_comp_exps.dropna()[expHighRes].values)[1] # pValue only allows two data series
-                print(f'{namerow} - {namecol} pValue: {pValue}')
-                if pValue < 0.05:
-                    for index in (0, 2):
-                        try:
-                            ax.collections[index].set_edgecolor('tab:green')
-                        except IndexError:
-                            pass
-                else:
-                     for index in (0, 2):
-                        try:
-                            ax.collections[index].set_edgecolor('tab:red')
-                        except IndexError:
-                            pass                   
+                try:
+                    pValue = wilcoxon(fss_comp_exps.dropna()[expLowRes].values, fss_comp_exps.dropna()[expHighRes].values)[1] # pValue only allows two data series
+                except ValueError:
+                    pValue = None
+                if pValue is not None:
+                    print(f'{namerow} - {namecol} pValue: {pValue}')
+                    if pValue < 0.05:
+                        for index in (0, 2):
+                            try:
+                                ax.collections[index].set_edgecolor('tab:green')
+                            except IndexError:
+                                pass
+                    else:
+                         for index in (0, 2):
+                            try:
+                                ax.collections[index].set_edgecolor('tab:red')
+                            except IndexError:
+                                pass                   
         fig.suptitle(f'FSS distributions | {expLowRes} (left) - {expHighRes} (right) | {obs}', fontsize = 10)
         fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSdist_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close()
@@ -162,20 +166,24 @@ def main(obs, case, exps):
                 PlotViolinInAxis(ax, sal_comp_exps, yLabel = namecol, yLim = [-2, 2])
                 ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
             # if two data series are (not) statisticaly different --> green (red) contour
-            pValue = wilcoxon(sal_comp_exps.dropna()[expLowRes].values, sal_comp_exps.dropna()[expHighRes].values)[1] # pValue only allows two data series
-            print(f'{namecol} pValue: {pValue}')
-            if pValue < 0.05:
-                for index in (0, 2):
-                    try:
-                        ax.collections[index].set_edgecolor('tab:green')
-                    except IndexError:
-                        pass
-            else:
-                 for index in (0, 2):
-                    try:
-                        ax.collections[index].set_edgecolor('tab:red')
-                    except IndexError:
-                        pass    
+            try:
+                pValue = wilcoxon(sal_comp_exps.dropna()[expLowRes].values, sal_comp_exps.dropna()[expHighRes].values)[1] # pValue only allows two data series
+            except ValueError:
+                pValue = None
+            if pValue is not None:
+                print(f'{namecol} pValue: {pValue}')
+                if pValue < 0.05:
+                    for index in (0, 2):
+                        try:
+                            ax.collections[index].set_edgecolor('tab:green')
+                        except IndexError:
+                            pass
+                else:
+                     for index in (0, 2):
+                        try:
+                            ax.collections[index].set_edgecolor('tab:red')
+                        except IndexError:
+                            pass    
         fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALdist_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
         plt.close()
     

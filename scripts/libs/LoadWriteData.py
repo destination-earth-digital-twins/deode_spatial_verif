@@ -75,6 +75,52 @@ def GetVarsFromGrib(gribFile, listVar):
     else:
         return listArrays
 
+def circular_distance(alpha_true, alpha_pred):
+    d0 = np.rad2deg(np.pi - abs(np.pi - abs(np.deg2rad(alpha_true) - np.deg2rad(alpha_pred))))
+    return d0
+
+def lons_deode_to_standard(lons):
+    distances = circular_distance(lons, np.repeat(0.0, len(lons)))
+    lons_standard = np.where(lons > 180.0, -1.0 * distances, distances)
+    return lons_standard.copy()
+
+def get_latlon_from_deode(gribFile, latName = 'lat', lonName = 'lon'):
+    lat, lon = get_vars_from_deode(gribFile, [latName, lonName])
+    return lat.copy(), lon.copy()
+
+def get_vars_from_deode(gribFile, listVar):
+    print(f'INFO:LoadWriteData:reading {gribFile}')
+    grbs = pygrib.open(gribFile)
+    listArrays = []
+    for var in listVar:
+        print(f'INFO:LoadWriteData:get {var} values')
+        if var == 'lat':
+            grb = grbs.select()[0]
+            lats = grb.latitudes.copy()
+            listArrays.append(lats.reshape(grb.values.shape))
+        elif var == 'lon':
+            grb = grbs.select()[0]
+            lons = grb.longitudes.copy()
+            lons_standard = lons_deode_to_standard(lons)
+            listArrays.append(lons_standard.reshape(grb.values.shape))
+        else:
+            if isinstance(var, int):
+                grb = grbs.message(var)
+            else:
+                if len(var.split('|')) == 1:
+                    grb = grbs.select(shortName=var)[0]
+                elif len(var.split('|')) == 2:
+                    name, lev = var.split('|')
+                    grb = grbs.select(shortName=name, level=int(lev))[0]
+                else:
+                    raise ValueError()
+            listArrays.append(grb.values.copy())
+    grbs.close()
+    if len(listVar) == 1:
+        return listArrays[0]
+    else:
+        return listArrays
+
 def BuildXarrayDataset(data, lons, lats, times, varName = 'var', lonName = 'lon', latName = 'lat', timesName = 'time', descriptionNc = ''):
     if ((len(data.shape) == 2) & (len(lons.shape) == 2) & (len(lats.shape) == 2) & (len([times]) == 1)):
         ds = xr.Dataset(
