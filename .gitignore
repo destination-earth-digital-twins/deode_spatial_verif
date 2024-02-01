@@ -1,0 +1,21 @@
+# Ignore the following directories
+OBSERVATIONS/*
+PLOTS/main_plots/*
+PLOTS/side_plots/plots_verif/FSS/*
+PLOTS/side_plots/plots_verif/SAL/*
+PLOTS/side_plots/plots_verif/gif_frames/*
+PLOTS/side_plots/plots_verif/panels/*
+SIMULATIONS/*
+config/Case/*
+config/exp/*
+config/obs_db/*
+pickles/FSS/*
+pickles/SAL/*
+main.sh
+# Except this file
+!config/Case/config_Spain_202205.yaml
+!config/exp/config_AIB_46h1_de2.yaml
+!config/exp/config_VAL500m_46h1_de2.yaml
+!config/obs_db/config_IMERG.yaml
+!config/Case/config_OPERA.yaml
+!config/Case/config_SEVIRI.yaml
