@@ -86,18 +86,20 @@ def main(obs, case, exps):
             obs_file = datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
             obs_values = get_data_function[obs_fileformat](obs_file, [obs_var_get,])
             values_databases[obs_db].append(obs_values.copy())
-            lat2D, lon2D = get_grid_function[obs_fileformat](obs_file) # it's the same grid for obs, expLowRes and expHighRes
+            obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
 
             expLowRes_file = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expLowRes}/data_regrid/{init_time}/{configs_exps[expLowRes]['model']['name']}_{expLowRes}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc")
             expLowRes_values = get_data_function['netCDF'](expLowRes_file, [var_verif,])
+            expLowRes_lat, expLowRes_lon = get_grid_function['netCDF'](expLowRes_file)
             values_databases[expLowRes].append(expLowRes_values.copy())
 
             expHighRes_file = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_regrid/{init_time}/{configs_exps[expHighRes]['model']['name']}_{expHighRes}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc")
             expHighRes_values = get_data_function['netCDF'](expHighRes_file, [var_verif,])
+            expHighRes_lat, expHighRes_lon = get_grid_function['netCDF'](expHighRes_file)
             values_databases[expHighRes].append(expHighRes_values.copy())
             expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], int(lead_time))
             expHighRes_file_orig = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
-            lat2D_expHighRes, lon2D_expHighRes = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
+            expHighRes_lat_orig, expHighRes_lon_orig = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
 
             try:
                 if configs_exps[expLowRes]['vars'][var_verif]['accum'] == True:
@@ -109,13 +111,13 @@ def main(obs, case, exps):
                 if verif_domain_ini is not None:
                     verif_domain = verif_domain_ini
                 else:
-                    verif_domain = [lon2D_expHighRes[:, 0].max() + 0.5, lon2D_expHighRes[:, -1].min() - 0.5, lat2D_expHighRes[0, :].max() + 0.5, lat2D_expHighRes[-1, :].min() - 0.5]
+                    verif_domain = [expHighRes_lon_orig[:, 0].max() + 0.5, expHighRes_lon_orig[:, -1].min() - 0.5, expHighRes_lat_orig[0, :].max() + 0.5, expHighRes_lat_orig[-1, :].min() - 0.5]
                     print(f'verif domain not established for {datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), "%Y%m%d%H")} UTC. By default: {verif_domain}')
 
             # Build the frame
             print(f'plotting {expLowRes_file} vs {obs_file} vs {expHighRes_file}')
             fig_frame = plt.figure(0, figsize = (24.0 / 2.54, 10.0 / 2.54), clear = True)
-            for iterator_axis, array2D, title_left, bool_left_label, bool_righ_label in zip(range(3), [expLowRes_values, obs_values, expHighRes_values], [f"{configs_exps[expLowRes]['model']['name']}[{expLowRes}]", obs_db, f"{configs_exps[expHighRes]['model']['name']}[{expHighRes}]"], [True, False, False], [False, False, True]):
+            for iterator_axis, array2D, lat2D, lon2D, title_left, bool_left_label, bool_righ_label in zip(range(3), [expLowRes_values, obs_values, expHighRes_values], [expLowRes_lat, obs_lat, expHighRes_lat], [expLowRes_lon, obs_lon, expHighRes_lon], [f"{configs_exps[expLowRes]['model']['name']}[{expLowRes}]", obs_db, f"{configs_exps[expHighRes]['model']['name']}[{expHighRes}]"], [True, False, False], [False, False, True]):
                 ax = fig_frame.add_subplot(1, 3, iterator_axis + 1, projection = ccrs.PlateCarree())
                 if iterator_axis == 1:
                     title_right = datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), 'Valid: %Y%m%d%H UTC')
@@ -125,14 +127,14 @@ def main(obs, case, exps):
                     title_color = colors_name[iterator]
                 PlotMapInAxis(ax, array2D, lat2D, lon2D, extent = case_domain, titleLeft = f'{title_left}\n', titleRight = f'\n{title_right}', cbLabel = f'{var_verif_description} ({var_verif_units})', titleColorRight = title_color, yLeftLabel = bool_left_label, yRightLabel = bool_righ_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
                 if iterator_axis == 2:
-                    PlotContourDomainInAxis(ax, lat2D_expHighRes, lon2D_expHighRes, text = init_time, color = colors_name[iterator])
+                    PlotContourDomainInAxis(ax, expHighRes_lat_orig, expHighRes_lon_orig, text = init_time, color = colors_name[iterator])
                 PlotBoundsInAxis(ax, verif_domain, text = 'verif', color = 'black')
             fig_frame.savefig(f"PLOTS/side_plots/plots_verif/gif_frames/{obs}/{case}/{exps.replace('-VS-', '_')}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png", dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close(0)
         
         # figure of total/max values
         fig = plt.figure(1, figsize = (24.0 / 2.54, 10.0 / 2.54), clear = True)
-        for iterator_axis, db, bool_left_label, bool_right_label in zip(range(3), list(values_databases.keys()), (True, False, False), (False, False, True)):
+        for iterator_axis, db, lat2D, lon2D, bool_left_label, bool_right_label in zip(range(3), list(values_databases.keys()), (expLowRes_lat, obs_lat, expHighRes_lat), (expLowRes_lon, obs_lon, expHighRes_lon), (True, False, False), (False, False, True)):
             ax = fig.add_subplot(1, 3, iterator_axis + 1, projection = ccrs.PlateCarree())
             if iterator_axis == 1:
                 title_right = f"Valid: {config_case['dates']['ini']}-{config_case['dates']['end']} UTC"
@@ -151,7 +153,7 @@ def main(obs, case, exps):
                 PlotMapInAxis(ax, np.max(values_databases[db], axis = 0), lat2D, lon2D, extent = case_domain, titleLeft = f'{db}\n', titleRight = f'\n{title_right}', cbLabel = f'Max. {var_verif_description} ({var_verif_units})', yLeftLabel = bool_left_label, yRightLabel = bool_right_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
             PlotBoundsInAxis(ax, verif_domain, text = 'verif', color = 'black')
             if iterator_axis == 2:
-                PlotContourDomainInAxis(ax, lat2D_expHighRes, lon2D_expHighRes, text = init_time, color = colors_name[iterator])
+                PlotContourDomainInAxis(ax, expHighRes_lat_orig, expHighRes_lon_orig, text = init_time, color = colors_name[iterator])
         fig.savefig(f"PLOTS/main_plots/{case}/{key}_{var_verif}_{case}_{exps.replace('-VS-', '_')}_{obs_db}_{init_time}+{str(common_lead_times[init_time][0]).zfill(2)}_+{str(common_lead_times[init_time][-1]).zfill(2)}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close(1)
     

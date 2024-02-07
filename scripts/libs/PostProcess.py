@@ -22,3 +22,8 @@ def Reflectivity_dBZ(reflectivity):
     print('INFO:PostProccess:convert Reflectivity to dBZ units')
     newValues = 10.0 * np.log10(np.maximum(1.0, 200.0 * reflectivity**1.6))
     return newValues.copy()
+
+def MetersToMilimeters(values_m):
+    print('INFO:PostProccess:convert Meters to Milimeters')
+    values_mm = values_m * 1000.0
+    return values_mm.copy()

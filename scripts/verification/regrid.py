@@ -16,6 +16,12 @@ from plots import PlotMapInAxis
 
 freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
 
+def CropDomainsFromBounds(data, lat2D, lon2D, bounds):
+    lonMin, lonMax, latMin, latMax = bounds
+    ids = np.argwhere((lat2D >= latMin) & (lat2D <= latMax) & (lon2D >= lonMin) & (lon2D <= lonMax))
+    idLatIni, idLatEnd, idLonIni, idLonEnd = ids[:,0].min(), ids[:,0].max() + 1, ids[:,1].min(), ids[:,1].max() + 1
+    return data[idLatIni:idLatEnd, idLonIni:idLonEnd].copy()
+
 def main(obs, case, exp):
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
@@ -37,6 +43,7 @@ def main(obs, case, exp):
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     case_domain = config_case['location']['NOzoom']
+    bounds_W, bounds_E, bounds_S, bounds_N = case_domain
     print(f'Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}')
 
     # exp data
@@ -75,8 +82,14 @@ def main(obs, case, exp):
             obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
         exp_filename_t = lead_time_replace(exp_filename, lead_times[0].item())
         simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
-        obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
-        simus_lat, simus_lon = get_grid_function[exp_fileformat](simus_file)
+        obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
+        simus_lat_orig, simus_lon_orig = get_grid_function[exp_fileformat](simus_file)
+        
+        # crop data to avoid ram issues
+        obs_lat = CropDomainsFromBounds(obs_lat_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+        obs_lon = CropDomainsFromBounds(obs_lon_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+        simus_lat = CropDomainsFromBounds(simus_lat_orig, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+        simus_lon = CropDomainsFromBounds(simus_lon_orig, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
         print(f'Lat lon coordinates from {obs_db}: \n --- lat --- \n{obs_lat} \n --- lon --- \n{obs_lon}')
         print(f'Lat lon coordinates from {exp}: \n --- lat --- \n{simus_lat} \n --- lon --- \n{simus_lon}')
 
@@ -93,11 +106,12 @@ def main(obs, case, exp):
                 exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
                 data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
             
-            # postprocessing??
+            # postprocessing?? and crop
             if postprocess != 'None':
-                data_fp = postprocess_function[postprocess](data)
+                data_raw_domain = postprocess_function[postprocess](data)
+                data_fp = CropDomainsFromBounds(data_raw_domain, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
             else:
-                data_fp = data.copy()
+                data_fp = CropDomainsFromBounds(data, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
 
             # plot original simus
             fig = plt.figure(0, figsize=(9. / 2.54, 9. / 2.54), clear = True)

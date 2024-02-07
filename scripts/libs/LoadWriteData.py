@@ -42,18 +42,25 @@ def GetVarsFromNetCDF(ncFile, listVar):
 def GetLatLon2DFromGrib(gribFile, latName = 'lat', lonName = 'lon'):
     lat, lon = GetVarsFromGrib(gribFile, [latName, lonName])
     lat2D, lon2D = CheckAndBuildGrid(lat, lon)
-    return lat2D.copy(), lon2D.copy()
+    lon2D_standard = np.where(lon2D > 180., lon2D - 360., lon2D)
+    return lat2D.copy(), lon2D_standard.copy()
     
 def GetVarsFromGrib(gribFile, listVar):
     print(f'INFO:LoadWriteData:reading {gribFile}')
+    lat_must_flip = False
     grbs = pygrib.open(gribFile)
     grb = grbs.select()[0]
     lats, lons = grb.latlons()
+    if lats[0, 0] > lats[-1, 0]:
+        lat_must_flip = True
     listArrays = []
     for var in listVar:
         print(f'INFO:LoadWriteData:get {var} values')
         if var == 'lat':
-            listArrays.append(lats.copy())
+            if lat_must_flip == True:
+                listArrays.append(np.flipud(lats))
+            else:
+                listArrays.append(lats.copy())
         elif var == 'lon':
             listArrays.append(lons.copy())
         else:
@@ -67,8 +74,10 @@ def GetVarsFromGrib(gribFile, listVar):
                     grb = grbs.select(shortName=name, level=int(lev))[0]
                 else:
                     raise ValueError()
-                
-            listArrays.append(grb.values.copy())
+            if lat_must_flip == True:
+                listArrays.append(np.flipud(grb.values))
+            else:
+                listArrays.append(grb.values.copy())
     grbs.close()
     if len(listVar) == 1:
         return listArrays[0]
