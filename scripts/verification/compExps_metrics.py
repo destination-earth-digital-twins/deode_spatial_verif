@@ -186,35 +186,6 @@ def main(obs, case, exps):
                             pass    
         fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALdist_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
         plt.close()
-    
-    # figure Boxplots
-    fig = plt.figure(figsize = (24. / 2.54, 7. / 2.54), clear = True)
-    ax_fss = fig.add_subplot(1, 2, 1)
-    ax_sal = fig.add_subplot(1, 2, 2)
-    for exp, dx, color in zip((expLowRes, expHighRes), (-0.2, 0.2), ('tab:blue', 'tab:orange')):
-        ax_fss.boxplot([fss_boxplots_exps[exp][init_time] for init_time in common_inits], positions = np.arange(1.0 + dx, len(common_inits) + 1.0 + dx), whis = [5,95], widths = 0.3, showfliers = False, showmeans = True, patch_artist = True, boxprops = {'facecolor': color}, medianprops = {'color': 'black'}, meanprops = {'marker': 'o', 'markerfacecolor': 'black', 'markeredgecolor': 'None'})
-        for idx, marker, label in zip(range(3), ('s', '^', 'o'), ('S', 'A', 'L')):
-            values = [sal_median_exps[exp][init_time][idx] for init_time in common_inits]
-            positions = np.arange(1.0 + dx, len(common_inits) + 1.0 + dx)
-            ax_sal.plot(positions, values, linestyle = '', marker = marker, markeredgecolor = 'black', color = color, label = label)
-    for ax, statistic, y_max in zip((ax_fss, ax_sal), ('FSS', 'SAL'), (1.05, 2.05)):
-        ax.set_title(f'{statistic} summary | {obs} | {"-VS-".join(fss_boxplots_exps.keys())}', fontsize = 8, fontname = 'DejaVu Serif')
-        ax.set_xlabel('inits [%Y%m%d%H]', fontsize = 8, fontname = 'DejaVu Serif')
-        ax.set_ylabel(fr'{statistic} values [-]', fontsize = 8, fontname = 'DejaVu Serif')
-        if statistic == 'SAL':
-            ax.set_ylim([-y_max, y_max])
-            legend_elements = [
-                Line2D([0], [0], marker='s', color='black', label='Structure', markerfacecolor='white', markersize=6, linewidth = 0.0),
-                Line2D([0], [0], marker='^', color='black', label='Amplitude', markerfacecolor='white', markersize=6, linewidth = 0.0),
-                Line2D([0], [0], marker='o', color='black', label='Location', markerfacecolor='white', markersize=6, linewidth = 0.0)]
-            ax.legend(handles=legend_elements, loc = 'upper center', ncol = 3, fontsize = 8)
-        else:
-            ax.set_ylim([-0.05, y_max])
-        ax.set_xticks(range(1, len(common_inits) + 1), common_inits, rotation = 15.0)
-        ax.tick_params(axis='both', labelsize=8, direction='in')
-        ax.grid(True, linestyle='--', alpha=0.7)
-    fig.savefig(f"PLOTS/main_plots/{case}/Boxplots_{obs}_{exps.replace('-VS-', '_vs_')}_{case}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
-    plt.close()
     return 0
 
 if __name__ == '__main__':

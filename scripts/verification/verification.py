@@ -105,9 +105,10 @@ def main(obs, case, exp):
         for lead_time in lead_times:
             file_obs = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
             data_obs = get_data_function[obs_fileformat](file_obs, [obs_var_get])
+            obs_lat, obs_lon = get_grid_function[obs_fileformat](file_obs)
             file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
             data_nwp = get_data_function['netCDF'](file_nwp, [var_verif])
-            lat2D, lon2D = get_grid_function['netCDF'](file_nwp) # it's the same grid for both OBS and exp
+            lat2D, lon2D = get_grid_function['netCDF'](file_nwp)
 
             # set verif domain
             try:
@@ -125,7 +126,7 @@ def main(obs, case, exp):
 
             # crop data to common domain
             data_nwp_common = CropDomainsFromBounds(data_nwp, lat2D, lon2D, verif_domain)
-            data_obs_common = CropDomainsFromBounds(data_obs, lat2D, lon2D, verif_domain)
+            data_obs_common = CropDomainsFromBounds(data_obs, obs_lat, obs_lon, verif_domain)
 
             # negative vars must be flipped to use FSS and SAL methods
             if is_negative == True:
