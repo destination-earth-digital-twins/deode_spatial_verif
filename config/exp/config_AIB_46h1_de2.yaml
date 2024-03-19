@@ -1,40 +1,48 @@
 'model':
     'name': 'HARMONIE-AROME'
 'format':
-    'filepaths': ['/home/sp4h/SCRATCH/hm_home/%exp/archive/%Y/%m/%d/%H/',]
+    'filepaths': ['/ec/res4/scratch/esp0754/harmonie/%exp/%Y/%m/%d/%H/',]
     'filename': 'fc%Y%m%d%H+%LLLgrib2_fp'
-    'fileformat': 'Grib2'
+    'fileformat': 'Grib'
 'inits':
     '2022050200':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050400'
     '2022050206':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050406'
     '2022050212':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050412'
     '2022050218':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050418'
     '2022050300':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050500'
     '2022050306':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050506'
     '2022050312':
         'path': 0
-        'fcast_horiz': '2022050323'
+        'fcast_horiz': '2022050512'
 'vars':
     'pcp':
-        'var': 315
+        'var': 'tp'
         'accum': True
+        'verif_0h': False
         'postprocess': 'None'
         'negative_values': False
-    'refl':
-        'var': 194
+    'bt':
+        'var': 'msat09_ch006'
         'accum': False
+        'verif_0h': False
+        'postprocess': 'K_C'
+        'negative_values': True
+    'refl':
+        'var': 'refl|1000'
+        'accum': False
+        'verif_0h': False
         'postprocess': 'Z_dBZ'
         'negative_values': False
     'lat':

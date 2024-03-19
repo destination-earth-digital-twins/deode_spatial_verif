@@ -44,21 +44,7 @@ def main(obs, case, exps):
         mask_isin = np.isin(list(fss[expLowRes][init_time].keys()), list(fss[expHighRes][init_time].keys()))
         common_lead_times[init_time] = np.array(list(fss[expLowRes][init_time].keys()))[mask_isin]
         print(f'Set common lead times. {init_time}: {common_lead_times[init_time]}')
-
-    # data for boxplots
-    fss_boxplots_exps = {}
-    sal_median_exps = {}
-    for exp in (expLowRes, expHighRes):
-        sal_median_exps[exp] = {}
-        fss_boxplots_exps[exp] = {}
-        for init_time in common_inits:
-            sal_median_exps[exp][init_time] = sal[exp][init_time].quantile(.5).values.copy()
-            fss_values_init = []
-            for lead_time in common_lead_times[init_time]:
-                fss_values_init.append(fss[exp][init_time][lead_time].values.copy())
-            fss_medians = np.nanquantile(fss_values_init, 0.5, axis = 0)
-            fss_boxplots_exps[exp][init_time] = fss_medians.flatten().copy()
-        
+    
     # get thresholds and scales from FSS
     namecols_fss = fss[expLowRes][common_inits[0]][common_lead_times[common_inits[0]][0]].columns
     namerows_fss = fss[expLowRes][common_inits[0]][common_lead_times[common_inits[0]][0]].index

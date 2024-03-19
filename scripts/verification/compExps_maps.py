@@ -12,21 +12,11 @@ from datetime import datetime, timedelta
 from glob import glob
 from LoadWriteData import LoadConfigFileFromYaml, LoadPickle
 from dicts import get_data_function, get_grid_function, colormaps
+from times import lead_time_replace
+from domains import set_domain_verif
 from plots import PlotMapInAxis, PlotContourDomainInAxis, PlotBoundsInAxis
 
-freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
 colors_name = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
-
-def lead_time_replace(text, replace_with = '*'):
-    pattern = r'(%LL+)'
-    new_text = re.sub(pattern, lambda match: replace_function(match.group(0), replace_with), text)
-    return new_text
-
-def replace_function(text, replace_with):
-    if isinstance(replace_with, int):
-        return str(replace_with).zfill(len(text) - 1)
-    else:
-        return "*"
 
 def sorted_list_files(string):
     list_files = glob(string)
@@ -49,9 +39,10 @@ def main(obs, case, exps):
     var_verif_units = config_obs_db['vars'][var_verif]['units']
     print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get}')
 
-    # Case bounds
+    # Case data
     config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
     case_domain = config_case['location']['NOzoom']
+    verif_domains = config_case['verif_domain']
     print(f'Map bounds: {case_domain}')
     
     # Experiments to compare between. Load fss to set common lead times
@@ -77,42 +68,31 @@ def main(obs, case, exps):
 
     values_databases = {}
     for iterator, init_time in enumerate(common_inits):
-        verif_domain_ini = None
         date_exp_ini = datetime.strptime(init_time, '%Y%m%d%H')
         for db in (expLowRes, obs_db, expHighRes):
             values_databases[db] = []
 
         for lead_time in common_lead_times[init_time]:
             obs_file = datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-            obs_values = get_data_function[obs_fileformat](obs_file, [obs_var_get,])
+            obs_values, obs_lat, obs_lon = get_data_function[obs_fileformat](obs_file, [obs_var_get, 'lat', 'lon'])
             values_databases[obs_db].append(obs_values.copy())
-            obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
 
             expLowRes_file = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expLowRes}/data_regrid/{init_time}/{configs_exps[expLowRes]['model']['name']}_{expLowRes}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc")
-            expLowRes_values = get_data_function['netCDF'](expLowRes_file, [var_verif,])
-            expLowRes_lat, expLowRes_lon = get_grid_function['netCDF'](expLowRes_file)
+            expLowRes_values, expLowRes_lat, expLowRes_lon = get_data_function['netCDF'](expLowRes_file, [var_verif, 'lat', 'lon'])
             values_databases[expLowRes].append(expLowRes_values.copy())
 
             expHighRes_file = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_regrid/{init_time}/{configs_exps[expHighRes]['model']['name']}_{expHighRes}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc")
-            expHighRes_values = get_data_function['netCDF'](expHighRes_file, [var_verif,])
-            expHighRes_lat, expHighRes_lon = get_grid_function['netCDF'](expHighRes_file)
+            expHighRes_values, expHighRes_lat, expHighRes_lon = get_data_function['netCDF'](expHighRes_file, [var_verif, 'lat', 'lon'])
             values_databases[expHighRes].append(expHighRes_values.copy())
             expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], int(lead_time))
             expHighRes_file_orig = datetime.strftime(date_exp_ini, f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
             expHighRes_lat_orig, expHighRes_lon_orig = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
 
-            try:
-                if configs_exps[expLowRes]['vars'][var_verif]['accum'] == True:
-                    verif_domain = config_case['verif_domain'][datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time) - 1), '%Y%m%d%H')]
-                else:
-                    verif_domain = config_case['verif_domain'][datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), '%Y%m%d%H')]
-                verif_domain_ini = verif_domain
-            except KeyError:
-                if verif_domain_ini is not None:
-                    verif_domain = verif_domain_ini
-                else:
-                    verif_domain = [expHighRes_lon_orig[:, 0].max() + 0.5, expHighRes_lon_orig[:, -1].min() - 0.5, expHighRes_lat_orig[0, :].max() + 0.5, expHighRes_lat_orig[-1, :].min() - 0.5]
-                    print(f'verif domain not established for {datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), "%Y%m%d%H")} UTC. By default: {verif_domain}')
+            # set verif domain
+            verif_domain = set_domain_verif(date_exp_ini + timedelta(hours = int(lead_time)), verif_domains)
+            if verif_domain is None:
+                verif_domain = [expHighRes_lon_orig[:, 0].max() + 0.5, expHighRes_lon_orig[:, -1].min() - 0.5, expHighRes_lat_orig[0, :].max() + 0.5, expHighRes_lat_orig[-1, :].min() - 0.5]
+                print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")} UTC. By default: {verif_domain}')
 
             # Build the frame
             print(f'plotting {expLowRes_file} vs {obs_file} vs {expHighRes_file}')

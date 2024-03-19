@@ -76,8 +76,8 @@ def main(path_OPERA_raw, case):
 
     # Case data: initial date + end date
     config_case = LoadConfigFileFromYaml(f'../../config/Case/config_{case}.yaml')
-    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H') + timedelta(hours = 1)
-    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H') + timedelta(hours = 1)
+    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
+    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
 
     obs_path = make_dir_obs(obs, case)
     

@@ -9,8 +9,7 @@ sys.path.append('scripts/libs/')
 from datetime import datetime, timedelta
 from PIL import Image
 from LoadWriteData import LoadConfigFileFromYaml
-
-freqHours = 1
+from times import set_lead_times
 
 def main(obs, case, exp):
     # OBS data: database + variable
@@ -24,6 +23,8 @@ def main(obs, case, exp):
     # exp data
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
+    is_accum = config_exp['vars'][var_verif]['accum']
+    verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
 
     # init times of nwp
     for init_time in config_exp['inits'].keys():
@@ -32,20 +33,19 @@ def main(obs, case, exp):
         # set lead times from experiments
         date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
         date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
-        if date_simus_ini < date_ini:
-            forecast_ini = int((date_ini - date_simus_ini).total_seconds() / 3600.0)
+        lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
+        if is_accum == True:
+            lead_times = lead_times[lead_times >= 1].copy() # TODO: accum_hours instead 1h
+        elif verif_at_0h == False:
+            lead_times = lead_times[lead_times > 0].copy()
         else:
-            forecast_ini = 0
-        forecast_horiz = int((date_simus_end - date_simus_ini).total_seconds() / 3600.0)
-        if config_exp['vars'][var_verif]['accum'] == True:
-            forecast_ini += 1
-            forecast_horiz += 1
-        print(f'Forecast from {exp}: {init_time}+{str(forecast_ini).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_ini), "%Y%m%d%H")}) up to {init_time}+{str(forecast_horiz).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = forecast_horiz), "%Y%m%d%H")})')
+            pass
+        print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
         
-        for forecast in range(forecast_ini, forecast_horiz + 1, freqHours):
+        for lead_time in lead_times:
             try:
-                imagesRowBot = [Image.open(x) for x in [f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(forecast).zfill(2)}.png']]
-                imagesRowTop = [Image.open(x) for x in [f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_regrid_vs_{obs}_{init_time}+{str(forecast).zfill(2)}_pcolormesh.png', f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_orig_{init_time}+{str(forecast).zfill(2)}_pcolormesh.png']]
+                imagesRowBot = [Image.open(x) for x in [f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(lead_time).zfill(2)}.png']]
+                imagesRowTop = [Image.open(x) for x in [f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_regrid_vs_{obs}_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png']]
 
                 widthsRowBot, heightsRowBot = zip(*(i.size for i in imagesRowBot))
                 widthsRowTop, heightsRowTop = zip(*(i.size for i in imagesRowTop))
@@ -65,7 +65,7 @@ def main(obs, case, exp):
                     new_im.paste(imTop, (x_offset,y_offset))
                     x_offset += imTop.size[0]
 
-                new_im.save(f'PLOTS/side_plots/plots_verif/panels/{obs}/{case}/{exp}/panel_{exp_model}_{exp}_{obs}_{init_time}+{str(forecast).zfill(2)}.png')
+                new_im.save(f'PLOTS/side_plots/plots_verif/panels/{obs}/{case}/{exp}/panel_{exp_model}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png')
             except FileNotFoundError:
                 pass
     return 0

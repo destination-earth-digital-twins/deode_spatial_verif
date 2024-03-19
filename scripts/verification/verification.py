@@ -12,25 +12,12 @@ from matplotlib import pyplot as plt
 
 from LoadWriteData import LoadConfigFileFromYaml, SavePickle
 from times import set_lead_times
+from domains import set_domain_verif, CropDomainsFromBounds
 from customSAL import SAL
 from dicts import get_grid_function, get_data_function, colormaps
 from plots import PlotMapInAxis, PlotFSSInAxis, PlotSALinAxis, PlotViolinInAxis
 
-freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
-
-# FSS
-fss = verification.get_method("FSS") # NaN == (values >= thr) = [] --> Obs: float; Pred: float; FSS = float | Obs: NaN; Pred: float; FSS = 0.0 | Obs: float; Pred: NaN; FSS = 0.0 | Obs: NaN; Pred: NaN; FSS = NaN
-
-# SAL
-#original from pỳsteps: sal = verification.get_method("SAL") # NaN == (values >= thr) = [] --> Obs: float; Pred: float; S, L = float, float | Obs: NaN; Pred: float; S, L = +/-2, NaN | Obs: float; Pred: NaN; S, L = +/-2, NaN | Obs: NaN; Pred: NaN; S, L = NaN, NaN
-#rangesSAL = [(0, 0.1), (0.1, 0.2), (0.2, 0.5), (0.5, 1.0), (1.0, 2.0), (2.0, 9999.999)]
-#colorsSAL = ['tab:green', 'tab:olive', 'gold', 'tab:orange', 'tab:red', 'black']
-
-def CropDomainsFromBounds(data, lat2D, lon2D, bounds):
-    lonMin, lonMax, latMin, latMax = bounds
-    ids = np.argwhere((lat2D >= latMin) & (lat2D <= latMax) & (lon2D >= lonMin) & (lon2D <= lonMax))
-    idLatIni, idLatEnd, idLonIni, idLonEnd = ids[:,0].min(), ids[:,0].max() + 1, ids[:,1].min(), ids[:,1].max() + 1
-    return data[idLatIni:idLatEnd, idLonIni:idLonEnd].copy()
+fss = verification.get_method("FSS")
 
 def PixelToDistanceStr(nPixels, resolution):
     valueStr, units = resolution.split(' ')
@@ -60,11 +47,14 @@ def main(obs, case, exp):
     config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
-    print(f'Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}; verification domains: {config_case["verif_domain"]}')
+    verif_domains = config_case['verif_domain']
+    print(f'Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}; verification domains: {verif_domains}')
 
     # exp data
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
+    is_accum = config_exp['vars'][var_verif]['accum']
+    verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     is_negative = config_exp['vars'][var_verif]['negative_values']
     print(f'Load config file for {exp} simulation: \n model: {exp_model}; variable to extract: {var_verif} ({config_obs_db["vars"][var_verif]["description"]}); units: {var_verif_units}')
 
@@ -86,15 +76,18 @@ def main(obs, case, exp):
 
     # init times of nwp
     for init_time in config_exp['inits'].keys():
-        verif_domain_ini = None
         date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
     
         # set lead times from experiments
         date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
         date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
         lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
-        if config_exp['vars'][var_verif]['accum'] == True:
-            lead_times = lead_times.copy() + 1
+        if is_accum == True:
+            lead_times = lead_times[lead_times >= 1].copy() # TODO: accum_hours instead 1h
+        elif verif_at_0h == False:
+            lead_times = lead_times[lead_times > 0].copy()
+        else:
+            pass
         print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
 
         dictFSS = {} # Final dict with one pandas.dataframe with FSS verification for each lead time
@@ -111,18 +104,10 @@ def main(obs, case, exp):
             lat2D, lon2D = get_grid_function['netCDF'](file_nwp)
 
             # set verif domain
-            try:
-                if config_exp['vars'][var_verif]['accum'] == True:
-                    verif_domain = config_case['verif_domain'][datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item() - 1), '%Y%m%d%H')] # namefiles from accum vars have a delay respect verif_domain timesteps from config_case
-                else:
-                    verif_domain = config_case['verif_domain'][datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), '%Y%m%d%H')]
-                verif_domain_ini = verif_domain
-            except KeyError:
-                if verif_domain_ini is not None:
-                    verif_domain = verif_domain_ini
-                else:
-                    verif_domain = [lon_nwp[:, 0].max() + 0.5, lon_nwp[:, -1].min() - 0.5, lat_nwp[0, :].max() + 0.5, lat_nwp[-1, :].min() - 0.5]
-                    print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")} UTC. By default: {verif_domain}')
+            verif_domain = set_domain_verif(date_simus_ini + timedelta(hours = lead_time.item()), verif_domains)
+            if verif_domain is None:
+                verif_domain = [lon_nwp[:, 0].max() + 0.5, lon_nwp[:, -1].min() - 0.5, lat_nwp[0, :].max() + 0.5, lat_nwp[-1, :].min() - 0.5]
+                print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")} UTC. By default: {verif_domain}')
 
             # crop data to common domain
             data_nwp_common = CropDomainsFromBounds(data_nwp, lat2D, lon2D, verif_domain)

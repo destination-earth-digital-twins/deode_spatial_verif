@@ -14,8 +14,6 @@ from times import set_lead_times, lead_time_replace
 from dicts import get_grid_function, get_data_function, colormaps, postprocess_function
 from plots import PlotMapInAxis
 
-freqHours = 1 # ALL CODE IS DEVELOPED FOR DATA WITH 1 HOUR TIME RESOLUTION
-
 def CropDomainsFromBounds(data, lat2D, lon2D, bounds):
     lonMin, lonMax, latMin, latMax = bounds
     ids = np.argwhere((lat2D >= latMin) & (lat2D <= latMax) & (lon2D >= lonMin) & (lon2D <= lonMax))
@@ -54,6 +52,7 @@ def main(obs, case, exp):
     exp_fileformat = config_exp['format']['fileformat']
     exp_var_get = config_exp['vars'][var_verif]['var']
     is_accum = config_exp['vars'][var_verif]['accum']
+    verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     postprocess = config_exp['vars'][var_verif]['postprocess']
     print(f'Load config file for {exp} simulation: \n model: {exp_model}; file paths: {exp_filepaths}; file name: {exp_filename}; file format: {exp_fileformat}; var. to get: {exp_var_get} ({var_verif})')
     
@@ -66,7 +65,11 @@ def main(obs, case, exp):
         date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
         lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
         if is_accum == True:
-            lead_times = lead_times.copy() + 1
+            lead_times = lead_times[lead_times >= 1].copy() # TODO: accum_hours instead 1h
+        elif verif_at_0h == False:
+            lead_times = lead_times[lead_times > 0].copy()
+        else:
+            pass
         print(f'Lead times from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1].item()).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
         
         # link simus to SIMULATIONS/
@@ -76,10 +79,7 @@ def main(obs, case, exp):
         os.system(f'ls -ltr SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_no_lead.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*")}')
 
         # get lat, lon coordinates from observations and simus at, for example, initial lead time
-        if is_accum == True:
-            obs_file = datetime.strftime(date_ini + timedelta(hours = 1), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-        else:
-            obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
+        obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
         exp_filename_t = lead_time_replace(exp_filename, lead_times[0].item())
         simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
         obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
@@ -95,15 +95,14 @@ def main(obs, case, exp):
 
         for lead_time in lead_times:
             # get original simus
+            exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
             if is_accum == True:
                 # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
-                exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
-                exp_filename_dt = lead_time_replace(exp_filename, lead_time.item() - freqHours)
+                exp_filename_dt = lead_time_replace(exp_filename, lead_time.item() - 1) # TODO: accum_hours instead 1h
                 data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
                 data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), [exp_var_get])
                 data = data_t - data_dt
             else:
-                exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
                 data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
             
             # postprocessing?? and crop

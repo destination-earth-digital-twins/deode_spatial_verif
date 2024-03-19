@@ -60,8 +60,8 @@ def main(case, user, password):
 
     # Case data: initial date + end date
     config_case = LoadConfigFileFromYaml(f'../../config/Case/config_{case}.yaml')
-    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
-    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
+    date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H') - timedelta(hours = 1)
+    date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H') - timedelta(hours = 1)
 
     obs_path = make_dir_obs(obs, case)
     
@@ -76,8 +76,8 @@ def main(case, user, password):
         file_00min = f'3B-HHR-L.MS.MRG.3IMERG.{datetime.strftime(date, "%Y%m%d-S%H%M%S-E%H2959")}.{str(minutes_from_date_0h).zfill(4)}.V06{type_product}.HDF5'
         file_30min = f'3B-HHR-L.MS.MRG.3IMERG.{datetime.strftime(date + timedelta(minutes = 30), "%Y%m%d-S%H%M%S-E%H5959")}.{str(minutes_from_date_0h + 30).zfill(4)}.V06{type_product}.HDF5'
         print(f'INFO:downloading files: {[file_00min, file_30min]}')
-        os.system(f'wget --no-check-certificate --user {user} --password {password} https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGHHL.06/{date.year}/{day_of_year}/{file_00min}')
-        os.system(f'wget --no-check-certificate --user {user} --password {password} https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGHHL.06/{date.year}/{day_of_year}/{file_30min}')
+        os.system(f'wget --no-check-certificate --user {user} --password {password} https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGHHL.06/{date.year}/{str(day_of_year).zfill(3)}/{file_00min}')
+        os.system(f'wget --no-check-certificate --user {user} --password {password} https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGHHL.06/{date.year}/{str(day_of_year).zfill(3)}/{file_30min}')
         # postprocess raw files
         values_intrahour = []
         for file in (file_00min, file_30min):
@@ -89,7 +89,7 @@ def main(case, user, password):
 
         date_process = date + timedelta(hours = 1)
         print(f'INFO:compute mean from {datetime.strftime(date, "%Y%m%d-%H:%M")} and {datetime.strftime(date + timedelta(minutes = 30), "%Y%m%d-%H:%M")} for accumulated pcp values at {datetime.strftime(date_process, "%Y%m%d-%H:%M")}')
-        values_pcp_process = np.mean(values_intrahour, axis = 0)
+        values_pcp_process = np.mean(values_intrahour, axis = 0) # pcp from 30-min files are in mm/h units
         # save new files
         new_file = datetime.strftime(date_process, f'{obs_path}{obs_filename}')
         dataset = BuildXarrayDataset(values_pcp_process, lon2D, lat2D, date_process, varName = var_verif, descriptionNc = f'IMERG | 1-hour accumulated precipitation | {datetime.strftime(date, "%Y%m%d%H")}-{datetime.strftime(date_process, "%Y%m%d%H")}')

@@ -12,6 +12,7 @@
     '':
         'var': 
         'accum': 
+        'verif_0h': 
         'postprocess': ''
         'negative_values': 
     'lat':
