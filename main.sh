@@ -1,13 +1,16 @@
 #!/bin/bash
 
 ########## PREAMBLE ##########
-# arguments
-OBS="SEVIRI_bt"
-Case="VALENCIA"
-expLowRes="AIB_46h1_de2"
-expHighRes="VAL500m_46h1_de2"
+# arguments. All arguments must have the corresponding configuration file within the subdirectories of the config folder.
+OBS="SEVIRI_bt" # possible values are: "IMERG_pcp", "SEVIRI_bt", "OPERA_pcp", "OPERA_refl"
+Case="Spain_202205" # case study label. It is recommended that the name matches with dcmdb if the case study is included in it.
+expLowRes="AIB_46h1_de2" # label of the reference experiment. It is shown on the left in the comparisons. 
+expHighRes="VAL500m_46h1_de2" # label of the high spatial resolution experiment. It is shown on the right in the comparisons. 
 
-# tasks
+# subset (in coming...) 
+#subset_label=""
+
+# tasks. set true or false to indicate whether or not the tool has to perform that step of the spatial verification.
 run_set_environment=true
 run_regrid=true
 run_plot_regrid=true

@@ -39,6 +39,14 @@ def GetVarsFromNetCDF(ncFile, listVar):
         else:
             return listArrays
 
+def check_is_typelist(var):
+    if (isinstance(var, int) | isinstance(var, str) | isinstance(var, dict)):
+        return [var]
+    elif isinstance(var, list):
+        return var
+    else:
+        raise TypeError(f'wrong var dtype: {type(var)}')
+        
 def get_lat_lon_raw_from_msg(msg):
     try:
         lat, lon = msg.latlons()
@@ -56,11 +64,14 @@ def get_msg_from_code(grib_obj, code):
         except ValueError:
             name, lev = code.split('|')
             grb = grib_obj.select(shortName = name, level = int(lev))[0]
+    elif isinstance(code, dict):
+        grb = grib_obj.select(**code)[0]
     else:
-        raise ValueError(f'wrong var dtype: {type(code)}')
+        raise TypeError(f'wrong var dtype: {type(code)}')
     return grb
 
-def get_vars_from_grib(file_grib, list_vars = []):
+def get_vars_from_grib(file_grib, vars):
+    list_vars = check_is_typelist(vars)
     grbs = pygrib.open(file_grib)
     print(f'INFO:LoadWriteData:reading {file_grib}')
     first_grb = grbs.select()[0]
@@ -81,7 +92,10 @@ def get_vars_from_grib(file_grib, list_vars = []):
             values_to_get.append(np.where(lon_raw > 180., lon_raw - 360., lon_raw))
         else:
             grb = get_msg_from_code(grbs, var)
-            print(f'INFO:LoadWriteData:get {grb.name} values in {grb.units} at {grb.level} ({grb.typeOfLevel})')
+            try:
+                print(f'INFO:LoadWriteData:get {grb.name} values in {grb.units} at {grb.level} ({grb.typeOfLevel})')
+            except RuntimeError:
+                print('INFO:LoadWriteData:get values')
             if lat_must_flip:
                 values_to_get.append(np.flipud(grb.values))
             else:
@@ -93,7 +107,7 @@ def get_vars_from_grib(file_grib, list_vars = []):
         return values_to_get
 
 def get_lat_lon_from_grib(file_grib):
-    lat, lon = get_vars_from_grib(file_grib, list_vars = ['lat', 'lon'])
+    lat, lon = get_vars_from_grib(file_grib, vars = ['lat', 'lon'])
     return lat.copy(), lon.copy()
 
 def BuildXarrayDataset(data, lons, lats, times, varName = 'var', lonName = 'lon', latName = 'lat', timesName = 'time', descriptionNc = ''):

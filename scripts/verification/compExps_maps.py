@@ -72,7 +72,9 @@ def main(obs, case, exps):
         for db in (expLowRes, obs_db, expHighRes):
             values_databases[db] = []
 
+        valid_times = []
         for lead_time in common_lead_times[init_time]:
+            valid_times.append(date_exp_ini + timedelta(hours = int(lead_time)))
             obs_file = datetime.strftime(date_exp_ini + timedelta(hours = int(lead_time)), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
             obs_values, obs_lat, obs_lon = get_data_function[obs_fileformat](obs_file, [obs_var_get, 'lat', 'lon'])
             values_databases[obs_db].append(obs_values.copy())
@@ -114,13 +116,19 @@ def main(obs, case, exps):
         
         # figure of total/max values
         fig = plt.figure(1, figsize = (24.0 / 2.54, 10.0 / 2.54), clear = True)
+        if configs_exps[expLowRes]['vars'][var_verif]['accum']:
+            valid_ini = valid_times[0] - timedelta(hours = 1) # TODO: accum_hours instead 1h
+            lead_time_str_ini = str(int(common_lead_times[init_time][0]) - 1).zfill(2) # TODO: accum_hours instead 1h
+        else:
+            valid_ini = valid_times[0]
+            lead_time_str_ini = common_lead_times[init_time][0]
         for iterator_axis, db, lat2D, lon2D, bool_left_label, bool_right_label in zip(range(3), list(values_databases.keys()), (expLowRes_lat, obs_lat, expHighRes_lat), (expLowRes_lon, obs_lon, expHighRes_lon), (True, False, False), (False, False, True)):
             ax = fig.add_subplot(1, 3, iterator_axis + 1, projection = ccrs.PlateCarree())
             if iterator_axis == 1:
-                title_right = f"Valid: {config_case['dates']['ini']}-{config_case['dates']['end']} UTC"
+                title_right = f"Valid: {valid_ini.strftime('%Y%m%d%H')}-{valid_times[-1].strftime('%Y%m%d%H')} UTC"
                 title_color = 'black'
             else:
-                title_right = f'Valid: {init_time}+{common_lead_times[init_time][0]} up to +{common_lead_times[init_time][-1]} UTC'
+                title_right = f'Valid: {init_time}+{lead_time_str_ini} up to +{common_lead_times[init_time][-1]} UTC'
                 title_color = colors_name[iterator]
             if var_verif == 'pcp':
                 key = 'Total'
@@ -131,10 +139,11 @@ def main(obs, case, exps):
             else:
                 key = 'Max'
                 PlotMapInAxis(ax, np.max(values_databases[db], axis = 0), lat2D, lon2D, extent = case_domain, titleLeft = f'{db}\n', titleRight = f'\n{title_right}', cbLabel = f'Max. {var_verif_description} ({var_verif_units})', yLeftLabel = bool_left_label, yRightLabel = bool_right_label, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
-            PlotBoundsInAxis(ax, verif_domain, text = 'verif', color = 'black')
+            if len(verif_domains.keys()) == 1:
+                PlotBoundsInAxis(ax, verif_domain, text = 'verif', color = 'black')
             if iterator_axis == 2:
                 PlotContourDomainInAxis(ax, expHighRes_lat_orig, expHighRes_lon_orig, text = init_time, color = colors_name[iterator])
-        fig.savefig(f"PLOTS/main_plots/{case}/{key}_{var_verif}_{case}_{exps.replace('-VS-', '_')}_{obs_db}_{init_time}+{str(common_lead_times[init_time][0]).zfill(2)}_+{str(common_lead_times[init_time][-1]).zfill(2)}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        fig.savefig(f"PLOTS/main_plots/{case}/{key}_{var_verif}_{case}_{exps.replace('-VS-', '_')}_{obs_db}_{init_time}+{lead_time_str_ini}_+{common_lead_times[init_time][-1]}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close(1)
     
     # Build the GIF

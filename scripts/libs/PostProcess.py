@@ -27,3 +27,8 @@ def MetersToMilimeters(values_m):
     print('INFO:PostProccess:convert Meters to Milimeters')
     values_mm = values_m * 1000.0
     return values_mm.copy()
+
+def compute_total_precipitation(list_precip):
+    print('INFO:PostProccess:compute total precipitation from rain, graupel and snow')
+    pcp = np.sum(list_precip, axis = 0)
+    return pcp.copy()

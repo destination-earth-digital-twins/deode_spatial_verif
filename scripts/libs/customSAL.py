@@ -1,14 +1,3 @@
-"""
-Creo que deberian cambiar las lineas 355-360 de pysteps.verification.salscores.
-Se machaca la variable tstorm_kwargs haciendo inutil este argumento al inicio del SAL.
-- Eso pensaba pero si usas la funcion _sal_detect_objects con argumento tstorm_kwargs != None, tiene prioridad sobre los thr_*. NO SE POR QUE !!!
-
-PROPONGO: sustituir  "tstorm_kwargs = {" por "tstorm_kwargs.update({" y las sucesivas actualizaciones: "minmax": threshold, etc. 
-Esto se puede meter en una funcion sencilla de forma que las lineas 350-360 serían:
-    if thr_factor is not None:
-        tstorm_kwargs = _update_tstorm_kwargs(precip, thr_factor, thr_quantile, tstorm_kwargs)
-Como añadido a esta libreria introduciria una funcion que printe los objetos, tanto el dataframe como el plot.
-"""
 import numpy as np
 import pandas as pd
 from pysteps.verification import salscores

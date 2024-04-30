@@ -11,14 +11,9 @@ from matplotlib import pyplot as plt
 
 from LoadWriteData import LoadConfigFileFromYaml, BuildXarrayDataset
 from times import set_lead_times, lead_time_replace
+from domains import CropDomainsFromBounds
 from dicts import get_grid_function, get_data_function, colormaps, postprocess_function
 from plots import PlotMapInAxis
-
-def CropDomainsFromBounds(data, lat2D, lon2D, bounds):
-    lonMin, lonMax, latMin, latMax = bounds
-    ids = np.argwhere((lat2D >= latMin) & (lat2D <= latMax) & (lon2D >= lonMin) & (lon2D <= lonMax))
-    idLatIni, idLatEnd, idLonIni, idLonEnd = ids[:,0].min(), ids[:,0].max() + 1, ids[:,1].min(), ids[:,1].max() + 1
-    return data[idLatIni:idLatEnd, idLonIni:idLonEnd].copy()
 
 def main(obs, case, exp):
     # OBS data: database + variable
@@ -99,11 +94,16 @@ def main(obs, case, exp):
             if is_accum == True:
                 # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
                 exp_filename_dt = lead_time_replace(exp_filename, lead_time.item() - 1) # TODO: accum_hours instead 1h
-                data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
-                data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), [exp_var_get])
-                data = data_t - data_dt
+                data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
+                data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), exp_var_get)
+                if isinstance(exp_var_get, list): # assume all variables have accumulated values
+                    data = []
+                    for values_t, values_dt in zip(data_t, data_dt):
+                        data.append(values_t - values_dt)
+                else:
+                    data = data_t - data_dt
             else:
-                data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), [exp_var_get])
+                data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
             
             # postprocessing?? and crop
             if postprocess != 'None':
