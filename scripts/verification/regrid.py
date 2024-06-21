@@ -42,6 +42,7 @@ def main(obs, case, exp):
     # exp data
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
+    exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     exp_filepaths = config_exp['format']['filepaths']
     exp_filename = config_exp['format']['filename']
     exp_fileformat = config_exp['format']['fileformat']
@@ -99,9 +100,11 @@ def main(obs, case, exp):
                 if isinstance(exp_var_get, list): # assume all variables have accumulated values
                     data = []
                     for values_t, values_dt in zip(data_t, data_dt):
-                        data.append(values_t - values_dt)
+                        diff = values_t - values_dt
+                        data.append(np.where(diff < 0, 0., diff))
                 else:
-                    data = data_t - data_dt
+                    diff = data_t - data_dt
+                    data = np.where(diff < 0, 0., diff)
             else:
                 data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
             
@@ -113,10 +116,23 @@ def main(obs, case, exp):
                 data_fp = CropDomainsFromBounds(data, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
 
             # plot original simus
-            fig = plt.figure(0, figsize=(9. / 2.54, 9. / 2.54), clear = True)
+            valid_time = date_simus_ini + timedelta(hours = lead_time.item())
+            fig = plt.figure(0, figsize=(11. / 2.54, 11. / 2.54), clear = True)
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
-            PlotMapInAxis(ax, data_fp, simus_lat, simus_lon, extent = case_domain, titleLeft = f'{exp_model} [{exp}] (orig)\n', titleRight = f'\nValid: {init_time}+{str(lead_time).zfill(2)} UTC', cbLabel = f'{var_verif_description} ({var_verif_units})', yLeftLabel = False, yRightLabel = True, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
-            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+            ax, cbar = PlotMapInAxis(
+                ax = ax, 
+                data = data_fp, 
+                lat = simus_lat, 
+                lon = simus_lon, 
+                extent = case_domain, 
+                title = f'{exp_model} [exp: {exp}] (orig grid)\nRun: {init_time} UTC\nValid on {valid_time.strftime("%Y-%m-%d at %Hz")} (+{str(lead_time).zfill(2)})', 
+                cb_label = f'{var_verif_description} ({var_verif_units})', 
+                left_grid_label = False, 
+                right_grid_label = True, 
+                cmap = colormaps[var_verif]['map'], 
+                norm = colormaps[var_verif]['norm']
+            )
+            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close(0)
 
             # regridding simus
@@ -130,7 +146,7 @@ def main(obs, case, exp):
 
             # write netCDF
             ds = BuildXarrayDataset(regridded_data, obs_lon, obs_lat, date_simus_ini + timedelta(hours = lead_time.item()), varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'{exp_model} - {exp} | {var_verif_description} - {init_time}+{str(lead_time).zfill(2)}')
-            ds.to_netcdf(datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'), compute='True')
+            ds.to_netcdf(datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'), compute='True')
             print('... DONE')
     return 0
 

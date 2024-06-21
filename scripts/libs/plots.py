@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import seaborn as sns
 import cartopy.crs as ccrs
@@ -5,58 +6,85 @@ import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+from matplotlib.ticker import FuncFormatter
 from colormaps import bt_cmap
+from domains import CropDomainsFromBounds
 
 rangesSAL = [(0, 0.1), (0.1, 0.2), (0.2, 0.5), (0.5, 1.0), (1.0, 2.0), (2.0, 9999.999)]
 colorsSAL = ['tab:green', 'tab:olive', 'gold', 'tab:orange', 'tab:red', 'black']
 
-def PlotMapInAxis(ax, data, lat, lon, extent = [], titleLeft = '', titleRight = '', cbLabel = '', titleColorLeft = 'black', titleColorRight = 'black', xTopLabel = False, xBotLabel = True, yLeftLabel = True, yRightLabel = False, crs = ccrs.PlateCarree(), cmap = None, norm = None):
+def has_decimals(value):
+    dec_part, int_part = math.modf(value)
+    return dec_part != 0.0
+
+def map_formatter(ax, extent = [], title = '', font_size = 8, top_grid_label = False, bot_grid_label = True, left_grid_label = True, right_grid_label = False):
+    if title != '':
+        ax.set_title(title, size = font_size)
     if extent != []:
-        ax.set_extent(extent, crs=crs)
-    ax.add_feature(cfeature.COASTLINE.with_scale('10m'), linewidth=0.75)
-    ax.add_feature(cfeature.BORDERS, linestyle=':')
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+    ax.add_feature(cfeature.COASTLINE, linewidth = 1)
+    ax.add_feature(cfeature.BORDERS, linewidth = 0.5)
+    ax.add_feature(cfeature.LAND)
+    ax.add_feature(cfeature.OCEAN)
+    gl = ax.gridlines(crs = ccrs.PlateCarree(), draw_labels = True, x_inline = False, y_inline = False, alpha = 0.4)
+    gl.xlabel_style = {'size': font_size, 'rotation': 0}
+    gl.ylabel_style = {'size': font_size}
+    gl.top_labels = top_grid_label
+    gl.bottom_labels = bot_grid_label
+    gl.left_labels = left_grid_label
+    gl.right_labels = right_grid_label
+    return ax
+
+def plot_domain_in_axis(ax, lat, lon, color = 'black', linewidth = 0.75):
+    for idx in (0, -1):
+        ax.plot(lon[:, idx], lat[:, idx], color = color, linewidth = linewidth, transform = ccrs.PlateCarree())
+        ax.plot(lon[idx, :], lat[idx, :], color = color, linewidth = linewidth, transform = ccrs.PlateCarree())
+    return ax
+
+def PlotMapInAxis(ax, data, lat, lon, extent = [], title = '', cb_label = '', font_size = 8, draw_bnds = False, top_grid_label = False, bot_grid_label = True, left_grid_label = True, right_grid_label = False, cmap = None, norm = None):
+    ax = map_formatter(
+        ax = ax, 
+        extent = extent, 
+        title = title, 
+        font_size = font_size, 
+        top_grid_label = top_grid_label, 
+        bot_grid_label = bot_grid_label, 
+        left_grid_label = left_grid_label, 
+        right_grid_label = right_grid_label
+    )
     
-    if cmap is not None:
-        cf = ax.pcolormesh(lon, lat, data, cmap=cmap, norm=norm, shading='auto')
+    if cmap is not None and norm is not None:
+        cf = ax.pcolormesh(lon, lat, data, cmap = cmap, norm = norm, transform = ccrs.PlateCarree())
     else:
-        cf = ax.pcolormesh(lon, lat, data, shading='auto')
+        cf = ax.pcolormesh(lon, lat, data)
     
-    # Add a color bar
-    cb = plt.colorbar(cf, ax = ax, orientation='horizontal', aspect=70, shrink=.9, pad=0.1, extendrect='True')
-    cb.set_label(cbLabel, size = 8)
+    cb = plt.colorbar(
+        cf, 
+        ax = ax, 
+        orientation = 'horizontal', 
+        aspect = 25, 
+        pad = 0.1, 
+        format = FuncFormatter(lambda x, _: f'{x:.1f}' if has_decimals(x) else f'{x:.0f}')#((abs(x) < 1) & (abs(x) > 0)) else f'{x:.0f}')
+    )
+    cb.set_label(cb_label, size = 8)
     cb.ax.tick_params(labelsize = 8)
     if cmap == bt_cmap:
-        cb.set_ticks([-80,-60,-40,-20,0,20,40])
+        cb.set_ticks([-80, -60, -40, -20, 0, 20, 40])
+    elif cmap is not None:
+        cb.set_ticks(norm.boundaries)
+    else:
+        pass
     
-    ax.set_title(titleLeft, loc='left', size = 8, color = titleColorLeft)
-    ax.set_title(titleRight, loc='right', size = 8, color = titleColorRight)
+    if draw_bnds:
+        ax = plot_domain_in_axis(ax, lat, lon)
     
-    # Add the gridlines
-    gl = ax.gridlines(crs=crs, draw_labels = True, linewidth=1, color='black', alpha=0.1, linestyle='dotted')
-    gl.top_labels = xTopLabel # xlabels_top = False (deprecated)
-    gl.xformatter = LONGITUDE_FORMATTER
-    gl.yformatter = LATITUDE_FORMATTER
-    gl.xlabel_style = {'size': 8}
-    gl.ylabel_style = {'size': 8}
-    gl.right_labels = yRightLabel
-    gl.left_labels = yLeftLabel
-    gl.bottom_labels = xBotLabel
+    return ax, cb
 
-def PlotBoundsInAxis(ax, bounds, text = '', color = 'tab:orange', projection = ccrs.PlateCarree()):
-    lonMin, lonMax, latMin, latMax = bounds
-    ax.plot([lonMin, lonMin], [latMax, latMin], color = color, linewidth = 1, transform = projection)
-    ax.plot([lonMin, lonMax], [latMin, latMin], color = color, linewidth = 1, transform = projection)
-    ax.plot([lonMax, lonMax], [latMin, latMax], color = color, linewidth = 1, transform = projection)
-    ax.plot([lonMax, lonMin], [latMax, latMax], color = color, linewidth = 1, transform = projection)
-    ax.text(lonMin - 0.1, latMax + 0.1, text, color = color, fontsize = 8, transform = projection)
-
-def PlotContourDomainInAxis(ax, lat2D, lon2D, text = '', color = 'tab:blue', projection = ccrs.PlateCarree()):
-    ax.plot(lon2D[:, 0], lat2D[:, 0], color = color, linewidth = 1, transform = projection)
-    ax.plot(lon2D[0, :], lat2D[0, :], color = color, linewidth = 1, transform = projection)
-    ax.plot(lon2D[:, -1], lat2D[:, -1], color = color, linewidth = 1, transform = projection)
-    ax.plot(lon2D[-1, :], lat2D[-1, :], color = color, linewidth = 1, transform = projection)
-    ax.text(lon2D[0, 0] - 0.1, lat2D[-1, 0] + 0.1, text, color = color, fontsize = 8, transform = projection)
+def plot_verif_domain_in_axis(ax, verif_domain, lat, lon, color = 'black', linewidth = 0.75):
+    lat_crop = CropDomainsFromBounds(lat, lat, lon, verif_domain)
+    lon_crop = CropDomainsFromBounds(lon, lat, lon, verif_domain)
+    ax = plot_domain_in_axis(ax, lat_crop, lon_crop, color, linewidth)
+    return ax
     
 def PlotFSSInAxis(ax, data, cmap = 'Blues', title = '', xLabel = '', yLabel = ''):
     sns.heatmap(data, cmap = cmap, annot = True, linewidths = .5, ax = ax, cbar = False)

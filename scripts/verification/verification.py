@@ -53,6 +53,7 @@ def main(obs, case, exp):
     # exp data
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
+    exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
     verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     is_negative = config_exp['vars'][var_verif]['negative_values']
@@ -99,7 +100,7 @@ def main(obs, case, exp):
             file_obs = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
             data_obs = get_data_function[obs_fileformat](file_obs, [obs_var_get])
             obs_lat, obs_lon = get_grid_function[obs_fileformat](file_obs)
-            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
+            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
             data_nwp = get_data_function['netCDF'](file_nwp, [var_verif])
             lat2D, lon2D = get_grid_function['netCDF'](file_nwp)
 
@@ -136,7 +137,7 @@ def main(obs, case, exp):
             # plot FSS at each lead time
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
             PlotFSSInAxis(ax, dictFSS[str(lead_time).zfill(2)].round(2), title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_time).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)
+            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)
             plt.close()
 
             # SAL at each lead time
@@ -161,23 +162,23 @@ def main(obs, case, exp):
                 with sns.axes_style('darkgrid'):
                     fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
                     PlotSALinAxis(ax, dfSAL.loc[str(lead_time).zfill(2), 'Structure'], dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], dfSAL.loc[str(lead_time).zfill(2), 'Location'], title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{lead_time}')
-                    fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)   
+                    fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)   
                     plt.close()
         
         # plot and save FSS and SAL verifications (mean and all, respectively)
         dfFSS_mean = pd.DataFrame(np.nanmean(listFSS_fcst, axis = 0), index = dictFSS[tuple(dictFSS.keys())[0]].index, columns = dictFSS[tuple(dictFSS.keys())[0]].columns)
         fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
         PlotFSSInAxis(ax, dfFSS_mean.round(2), title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
-        fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}_mean.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}_mean.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close()
-        SavePickle(dictFSS, f'pickles/FSS/{obs}/{case}/{exp}/FSS_{exp_model}_{exp}_{obs}_{init_time}')
+        SavePickle(dictFSS, f'pickles/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
         
         with sns.axes_style('darkgrid'):
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
             PlotSALinAxis(ax, dfSAL.dropna()['Structure'].values, dfSAL.dropna()['Amplitude'].values, dfSAL.dropna()['Location'].values, title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}_all.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
+            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}_all.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
             plt.close()
-            SavePickle(dfSAL, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model}_{exp}_{obs}_{init_time}')
+            SavePickle(dfSAL, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
 
         # violin plot FSS
         with sns.axes_style('whitegrid'):
@@ -196,14 +197,14 @@ def main(obs, case, exp):
                     PlotViolinInAxis(ax, df, xLabel = f'Scale', yLabel = f'FSS {row}')
                 else:
                     PlotViolinInAxis(ax, df, yLabel = f'FSS {row}')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{exp_model}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
+            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close()
         
         # violin plot SAL
         with sns.axes_style('whitegrid'):
             fig, ax = plt.subplots(figsize=(14. / 2.54, 6.0 / 2.54), clear = True)
             PlotViolinInAxis(ax, dfSAL, title = f'SAL distribution - {exp_model} | {exp} | {obs} | {init_time}', yLabel = 'SAL', yLim = [-2.1, 2.1])
-            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{exp_model}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
+            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close()
     return 0
 

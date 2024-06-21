@@ -10,7 +10,7 @@ from LoadWriteData import LoadConfigFileFromYaml
 from dicts import get_data_function, colormaps
 from times import set_lead_times
 from domains import set_domain_verif
-from plots import PlotMapInAxis, PlotBoundsInAxis
+from plots import PlotMapInAxis, plot_verif_domain_in_axis
 
 def main(obs, case, exp):
     # OBS data: database + variable
@@ -39,6 +39,7 @@ def main(obs, case, exp):
     # exp data
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
+    exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
     verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     print(f'Load config file for {exp} regridded experiment: \n model: {exp_model}; variable to extract: {var_verif} ({var_verif_description}, in {var_verif_units})')
@@ -64,7 +65,7 @@ def main(obs, case, exp):
             obs_file = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
             data_obs, lat_obs, lon_obs = get_data_function[obs_fileformat](obs_file, [obs_var_get, 'lat', 'lon'])
 
-            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
+            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
             data_nwp, lat_nwp, lon_nwp = get_data_function['netCDF'](file_nwp, [var_verif, 'lat', 'lon'])
 
             # set verif domain
@@ -75,17 +76,40 @@ def main(obs, case, exp):
 
             # plot large and small domain in different figs
             print(f'Plotting {obs_file} vs {file_nwp}')
-            fig = plt.figure(0, figsize = (17.0 / 2.54, 9.0 / 2.54), dpi = 600, clear = True)
+            valid_time = date_simus_ini + timedelta(hours = lead_time.item())
+            fig = plt.figure(0, figsize = (20.0 / 2.54, 11.0 / 2.54), dpi = 600, clear = True)
 
             ax1 = fig.add_subplot(1, 2, 1, projection=ccrs.PlateCarree())
-            PlotMapInAxis(ax1, data_obs, lat_obs, lon_obs, extent = bounds_NOzoom, titleLeft = f'{obs_db}\n', titleRight = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), '\nValid: %Y%m%d%H UTC'), cbLabel = f'{var_verif_description} ({var_verif_units})', cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
-            PlotBoundsInAxis(ax1, verif_domain, text = 'verif', color = 'black')
+            ax1, cbar1 = PlotMapInAxis(
+                ax = ax1, 
+                data = data_obs, 
+                lat = lat_obs, 
+                lon = lon_obs, 
+                extent = bounds_NOzoom, 
+                title = f'{obs_db}\nValid on {valid_time.strftime("%Y-%m-%d at %Hz")}', 
+                cb_label = f'{var_verif_description} ({var_verif_units})', 
+                cmap = colormaps[var_verif]['map'], 
+                norm = colormaps[var_verif]['norm']
+            )
+            ax1 = plot_verif_domain_in_axis(ax1, verif_domain, lat_obs, lon_obs)
 
             ax2 = fig.add_subplot(1, 2, 2, projection=ccrs.PlateCarree())
-            PlotMapInAxis(ax2, data_nwp, lat_nwp, lon_nwp, extent = bounds_NOzoom, titleLeft = f'{exp_model} [{exp}] (regrid)\n', titleRight = f'\nValid: {init_time}+{str(lead_time).zfill(2)} UTC', cbLabel = f'{var_verif_description} ({var_verif_units})', yLeftLabel = False, yRightLabel = True, cmap = colormaps[var_verif]['map'], norm = colormaps[var_verif]['norm'])
-            PlotBoundsInAxis(ax2, verif_domain, text = 'verif', color = 'black')
+            ax2, cbar2 = PlotMapInAxis(
+                ax = ax2, 
+                data = data_nwp, 
+                lat = lat_nwp, 
+                lon = lon_nwp, 
+                extent = bounds_NOzoom, 
+                title = f'{exp_model} [exp: {exp}] (regrid)\nRun: {init_time} UTC\nValid on {valid_time.strftime("%Y-%m-%d at %Hz")} (+{str(lead_time).zfill(2)})', 
+                cb_label = f'{var_verif_description} ({var_verif_units})', 
+                left_grid_label = False, 
+                right_grid_label = True, 
+                cmap = colormaps[var_verif]['map'], 
+                norm = colormaps[var_verif]['norm']
+            )
+            ax2 = plot_verif_domain_in_axis(ax2, verif_domain, lat_nwp, lon_nwp)
 
-            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model}_{exp}_regrid_vs_{obs}_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+            fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_regrid_vs_{obs}_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
             plt.close(0)
     return 0
 
