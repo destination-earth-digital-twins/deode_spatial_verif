@@ -94,7 +94,7 @@ def PlotFSSInAxis(ax, data, cmap = 'Blues', title = '', xLabel = '', yLabel = ''
     ax.tick_params(axis='both', labelsize=8)
 
 def PlotViolinInAxis(ax, data, title = '', xLabel = '', yLabel = '', yLim = [0, 1]):
-    sns.violinplot(data=data, palette="pastel", bw=0.2, cut=0, linewidth=2, ax = ax)
+    sns.violinplot(data=data, palette="pastel", cut=0, linewidth=2, ax = ax)
     ax.set_ylim(yLim)
     ax.set_ylabel(yLabel, fontweight="bold",fontsize = 8)
     ax.tick_params(axis='both', labelsize=8)
@@ -111,7 +111,7 @@ def SetColorToLocationValue(location, ranges, colors):
             color = colors[idx]
     return color
         
-def PlotSALinAxis(ax, structures, amplitudes, locations, ranges = rangesSAL, colors = colorsSAL, title = '', plotLegend = True):
+def PlotSALinAxis(ax, structures, amplitudes, locations, ranges = rangesSAL, colors = colorsSAL, title = '', detect_parms = {}, plotLegend = True):
     try:
         colorsLocation = [SetColorToLocationValue(locValue, ranges, colors) for locValue in locations]
     except:
@@ -141,8 +141,35 @@ def PlotSALinAxis(ax, structures, amplitudes, locations, ranges = rangesSAL, col
     if plotLegend == True:
         ax.legend(handles = legend_handles, labels=legend_labels, bbox_to_anchor= (1.0, 0.5), loc= "center left", title='Location (L)', title_fontsize = 8, fontsize=8)
 
+    if detect_parms != {}:
+        text = '\n'.join([f'{k}: {v}' for k,v in detect_parms.items()])
+        ax.text(1.05, 0.15, text, va='center', ha='left', fontsize=6, transform=ax.transAxes)
+
     ax.set_title(title, loc='left', fontsize=8)
     ax.set_xlabel('Structure (S)', fontsize=8)
     ax.set_ylabel('Amplitude (A)', fontsize=8)
     ax.set_xticks(np.arange(-2, 2.5, 0.5))
     ax.tick_params(axis='both', labelsize=8, direction = 'in')
+
+def plot_detected_objects(observation_objects, prediction_objects, cmap = None, norm = None):
+    maxRows = max(len(observation_objects), len(prediction_objects))
+    fig_height = 1.0 + 2.0 * float(maxRows)
+    fig = plt.figure(figsize = (5.0 / 2.54, fig_height / 2.54), clear = True)
+    if maxRows > 0:
+        iteratorAxis = 0
+        for iteratorCol, df, axis_title in zip(range(2), [observation_objects, prediction_objects], ['OBS', 'PRED']):
+            iteratorRow = 0
+            for detected_object in df['intensity_image'].values:
+                ax = fig.add_subplot(maxRows, 2, iteratorRow * 2 + iteratorCol + 1)
+                if ((cmap != None) & (norm != None)):
+                    ax.imshow(np.flipud(detected_object), cmap = cmap, norm = norm)
+                else:
+                    ax.imshow(np.flipud(detected_object))
+                if iteratorRow == 0:
+                    ax.set_title(axis_title, fontsize = 4, fontweight = 'bold')
+                ax.set_xticks([])
+                ax.set_yticks([])
+                iteratorRow += 1
+    fig.subplots_adjust(top=(1.0 - 1.2 / fig_height))
+    fig.suptitle(f"Detected objects", fontsize = 8, fontweight = 'bold')
+    return fig

@@ -1,6 +1,6 @@
 'format':
     'filename': ''
-    'extension': ''
+    'fileformat': ''
 'vars':
     '':
         'var_raw': ''

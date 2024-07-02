@@ -98,13 +98,13 @@ def main(obs, case, exps):
                 if pValue is not None:
                     print(f'{namerow} - {namecol} pValue: {pValue}')
                     if pValue < 0.05:
-                        for index in (0, 2):
+                        for index in (0, 1):
                             try:
                                 ax.collections[index].set_edgecolor('tab:green')
                             except IndexError:
                                 pass
                     else:
-                         for index in (0, 2):
+                         for index in (0, 1):
                             try:
                                 ax.collections[index].set_edgecolor('tab:red')
                             except IndexError:
@@ -120,12 +120,14 @@ def main(obs, case, exps):
             ax = fig.add_subplot(1, 2, iterator + 1)
             sal_all_lead_times = pd.DataFrame()
             for init_time in common_inits:
-                sal_all_lead_times = pd.concat([sal_all_lead_times.copy(), sal[exp][init_time].loc[common_lead_times[init_time]].copy()])
+                sal_all_lead_times = pd.concat([sal_all_lead_times.copy(), sal[exp][init_time]['values'].loc[common_lead_times[init_time]].copy()])
             if iterator == 1:
                 bool_legend = True
+                dict_params = {key: sal[exp][init_time]['detect_params'][key] for key in ('f', 'q', 'minsize', 'mindis')}
             else:
                 bool_legend = False
-            PlotSALinAxis(ax, sal_all_lead_times.dropna()['Structure'].values, sal_all_lead_times.dropna()['Amplitude'].values, sal_all_lead_times.dropna()['Location'].values, title = f'SAL plot | {exp} | {obs}', plotLegend = bool_legend)
+                dict_params = {}
+            PlotSALinAxis(ax, sal_all_lead_times.dropna()['Structure'].values, sal_all_lead_times.dropna()['Amplitude'].values, sal_all_lead_times.dropna()['Location'].values, title = f'SAL plot | {exp} | {obs}', detect_parms = dict_params, plotLegend = bool_legend)
         fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALall_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
         plt.close()
     
@@ -138,7 +140,7 @@ def main(obs, case, exps):
                 sal_exps_fixed_param[exp] = pd.DataFrame()
                 for init_time in common_inits:
                     common_index = [f'{init_time}+{lead_time}' for lead_time in common_lead_times[init_time]]
-                    sal_exp_fixed_param_init = pd.DataFrame(sal[exp][init_time].loc[common_lead_times[init_time], namecol].values.copy(), columns = [exp], index = common_index)
+                    sal_exp_fixed_param_init = pd.DataFrame(sal[exp][init_time]['values'].loc[common_lead_times[init_time], namecol].values.copy(), columns = [exp], index = common_index)
                     sal_exps_fixed_param[exp] = pd.concat([sal_exps_fixed_param[exp].copy(), sal_exp_fixed_param_init.copy()])
             sal_comp_exps = pd.merge(sal_exps_fixed_param[expLowRes], sal_exps_fixed_param[expHighRes], left_index = True, right_index = True) # double check with common inits and lead times
             
@@ -159,13 +161,13 @@ def main(obs, case, exps):
             if pValue is not None:
                 print(f'{namecol} pValue: {pValue}')
                 if pValue < 0.05:
-                    for index in (0, 2):
+                    for index in (0, 1):
                         try:
                             ax.collections[index].set_edgecolor('tab:green')
                         except IndexError:
                             pass
                 else:
-                     for index in (0, 2):
+                     for index in (0, 1):
                         try:
                             ax.collections[index].set_edgecolor('tab:red')
                         except IndexError:

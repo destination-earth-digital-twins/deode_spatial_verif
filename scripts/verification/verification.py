@@ -3,20 +3,23 @@
 
 import sys
 sys.path.append('scripts/libs/')
+import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from datetime import datetime, timedelta
 from pysteps import verification
 from matplotlib import pyplot as plt
+from matplotlib.colors import from_levels_and_colors
 
 from LoadWriteData import LoadConfigFileFromYaml, SavePickle
 from times import set_lead_times
 from domains import set_domain_verif, CropDomainsFromBounds
-from customSAL import SAL
+from customSAL import SAL, _sal_detect_objects
 from dicts import get_grid_function, get_data_function, colormaps
-from plots import PlotMapInAxis, PlotFSSInAxis, PlotSALinAxis, PlotViolinInAxis
+from plots import PlotMapInAxis, PlotFSSInAxis, PlotSALinAxis, plot_detected_objects, PlotViolinInAxis
 
+offset = {'bt': 0}
 fss = verification.get_method("FSS")
 
 def PixelToDistanceStr(nPixels, resolution):
@@ -56,7 +59,7 @@ def main(obs, case, exp):
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
     verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
-    is_negative = config_exp['vars'][var_verif]['negative_values']
+    find_min = config_exp['vars'][var_verif]['find_min']
     print(f'Load config file for {exp} simulation: \n model: {exp_model}; variable to extract: {var_verif} ({config_obs_db["vars"][var_verif]["description"]}); units: {var_verif_units}')
 
     # FSS & SAL params
@@ -70,10 +73,7 @@ def main(obs, case, exp):
     
     # FSS columns and rows names
     fss_nameCols = [PixelToDistanceStr(nPixel, obs_res) for nPixel in scales]
-    if is_negative == True:
-        fss_nameRows = [f'-{thr} {var_verif_units}' for thr in thresh]
-    else:
-        fss_nameRows = [f'{thr} {var_verif_units}' for thr in thresh]
+    fss_nameRows = [f'{thr} {var_verif_units}' for thr in thresh]
 
     # init times of nwp
     for init_time in config_exp['inits'].keys():
@@ -93,11 +93,20 @@ def main(obs, case, exp):
 
         dictFSS = {} # Final dict with one pandas.dataframe with FSS verification for each lead time
         score = {} # this dict will be used to build pandas.dataframe and included them into dictFSS
+        pickle_sal = {} # In addition to saving the SAL values, we want to save the object detection parameters.
+        pickle_sal['detect_params'] = detect_params.copy()
+        pickle_sal['detect_params'].update({
+            'f': thr_factor,
+            'q': thr_quantile,
+        })
         dfSAL = pd.DataFrame() # Final pandas.dataframe with SAL verification (columns) at each lead time (rows)
 
         listFSS_fcst = []
         for lead_time in lead_times:
-            file_obs = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
+            file_obs = datetime.strftime(
+                date_simus_ini + timedelta(hours = lead_time.item()), 
+                f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}'
+            )
             data_obs = get_data_function[obs_fileformat](file_obs, [obs_var_get])
             obs_lat, obs_lon = get_grid_function[obs_fileformat](file_obs)
             file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
@@ -105,21 +114,36 @@ def main(obs, case, exp):
             lat2D, lon2D = get_grid_function['netCDF'](file_nwp)
 
             # set verif domain
-            verif_domain = set_domain_verif(date_simus_ini + timedelta(hours = lead_time.item()), verif_domains)
+            verif_domain = set_domain_verif(
+                date_simus_ini + timedelta(hours = lead_time.item()), 
+                verif_domains
+            )
             if verif_domain is None:
-                verif_domain = [lon_nwp[:, 0].max() + 0.5, lon_nwp[:, -1].min() - 0.5, lat_nwp[0, :].max() + 0.5, lat_nwp[-1, :].min() - 0.5]
+                verif_domain = [
+                    lon_nwp[:, 0].max() + 0.5, 
+                    lon_nwp[:, -1].min() - 0.5, 
+                    lat_nwp[0, :].max() + 0.5, 
+                    lat_nwp[-1, :].min() - 0.5
+                ]
                 print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")} UTC. By default: {verif_domain}')
 
             # crop data to common domain
             data_nwp_common = CropDomainsFromBounds(data_nwp, lat2D, lon2D, verif_domain)
             data_obs_common = CropDomainsFromBounds(data_obs, obs_lat, obs_lon, verif_domain)
 
-            # negative vars must be flipped to use FSS and SAL methods
-            if is_negative == True:
-                data_nwp_common = -1.0 * data_nwp_common.copy()
-                data_obs_common = -1.0 * data_obs_common.copy()
-                cmap = colormaps[f'inverse_{var_verif}']['map']
-                norm = colormaps[f'inverse_{var_verif}']['norm']
+            # if the minimum values are searched, the array values have to be inverted due to the FSS and SAL methods 
+            # only allow searching for values above the selected thresholds. An offset must be added because 
+            # negative values are filtered out by the object detection algorithm. This offset is hard-coded in this script.
+            if find_min == True:
+                data_nwp_common = -1.0 * data_nwp_common.copy() + offset[var_verif]
+                data_obs_common = -1.0 * data_obs_common.copy() + offset[var_verif]
+                thresh = [-1.0 * thr + offset[var_verif] for thr in thresh]
+                # addapted colorbar only for object detection
+                cmap, norm = from_levels_and_colors(
+                    -1.0 * np.flipud(colormaps[var_verif]['norm'].boundaries) + offset[var_verif], 
+                    np.flipud(colormaps[var_verif]['map'].colors), 
+                    # extend = colormaps[var_verif]['map'].colorbar_extend
+                )
             else:
                 cmap = colormaps[var_verif]['map']
                 norm = colormaps[var_verif]['norm']
@@ -130,55 +154,137 @@ def main(obs, case, exp):
             for scale, nameCol in zip(scales, fss_nameCols):
                 score[str(lead_time).zfill(2)][nameCol] = []
                 for thr in thresh:
-                    score[str(lead_time).zfill(2)][nameCol].append(fss(data_nwp_common, data_obs_common, thr, scale))
-            dictFSS[str(lead_time).zfill(2)] = pd.DataFrame(score[str(lead_time).zfill(2)], index = fss_nameRows)
+                    score[str(lead_time).zfill(2)][nameCol].append(
+                        fss(data_nwp_common, data_obs_common, thr, scale)
+                    )
+            dictFSS[str(lead_time).zfill(2)] = pd.DataFrame(
+                score[str(lead_time).zfill(2)], 
+                index = fss_nameRows
+            )
             listFSS_fcst.append(dictFSS[str(lead_time).zfill(2)].values.copy())
 
             # plot FSS at each lead time
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-            PlotFSSInAxis(ax, dictFSS[str(lead_time).zfill(2)].round(2), title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_time).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)
+            PlotFSSInAxis(
+                ax, 
+                dictFSS[str(lead_time).zfill(2)].round(2), 
+                title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_time).zfill(2)}', 
+                xLabel = 'Scale', 
+                yLabel = 'Threshold'
+            )
+            fig.savefig(
+                f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', 
+                dpi=600, 
+                bbox_inches='tight', 
+                pad_inches = 0.05
+            )
             plt.close()
 
             # SAL at each lead time
             print(f'Compute SAL for timestep {init_time}+{str(lead_time).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")}) f: {thr_factor}; q: {thr_quantile}; detection params: {detect_params}')
+            objects = {}
+            for k, array in zip(('OBS', 'PRED'), (data_obs_common, data_nwp_common)):
+                objects[k] = _sal_detect_objects(
+                    array, 
+                    thr_factor = thr_factor, 
+                    thr_quantile = thr_quantile, 
+                    tstorm_kwargs = detect_params
+                )
             sValue, aValue, lValue = SAL(
                 data_nwp_common, 
                 data_obs_common, 
                 thr_factor = thr_factor, 
                 thr_quantile = thr_quantile, 
                 tstorm_kwargs = detect_params,
-                verbose = True, 
-                cmap = cmap, 
-                norm = norm, 
-                figname = f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(lead_time).zfill(2)}.png'
             )
 
-            dfSALrow = pd.DataFrame(np.array([sValue, aValue, lValue]).reshape(1, 3), columns = ['Structure', 'Amplitude', 'Location'], index = [str(lead_time).zfill(2)])
+            dfSALrow = pd.DataFrame(
+                np.array([sValue, aValue, lValue]).reshape(1, 3), 
+                columns = ['Structure', 'Amplitude', 'Location'], 
+                index = [str(lead_time).zfill(2)]
+            )
             dfSAL = pd.concat([dfSAL.copy(), dfSALrow.copy()])
 
+            # plot detected objects
+            fig = plot_detected_objects(
+                observation_objects = objects['OBS'], 
+                prediction_objects = objects['PRED'], 
+                cmap = cmap, 
+                norm = norm
+            )
+            fig.savefig(
+                f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(lead_time).zfill(2)}.png', 
+                dpi = 600, 
+                bbox_inches = 'tight', 
+                pad_inches = 0.05
+            )
+
             # plot SAL at each lead time
+            figname_sal = f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png'
             if len(dfSALrow.dropna()) > 0:
                 with sns.axes_style('darkgrid'):
                     fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-                    PlotSALinAxis(ax, dfSAL.loc[str(lead_time).zfill(2), 'Structure'], dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], dfSAL.loc[str(lead_time).zfill(2), 'Location'], title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{lead_time}')
-                    fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', dpi=600, bbox_inches='tight', pad_inches = 0.05)   
+                    PlotSALinAxis(
+                        ax, 
+                        dfSAL.loc[str(lead_time).zfill(2), 'Structure'], 
+                        dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], 
+                        dfSAL.loc[str(lead_time).zfill(2), 'Location'], 
+                        title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{lead_time}'
+                    )
+                    fig.savefig(
+                        figname_sal, 
+                        dpi=600, 
+                        bbox_inches='tight', 
+                        pad_inches = 0.05
+                    )   
                     plt.close()
+            elif os.path.isfile(figname_sal):
+                print(f'no objects detected for {init_time}+{str(lead_time).zfill(2)}. Removing the previous file for clarity')
+                os.remove(figname_sal)
+            else:
+                print(f'no objects detected for {init_time}+{str(lead_time).zfill(2)}')
         
         # plot and save FSS and SAL verifications (mean and all, respectively)
-        dfFSS_mean = pd.DataFrame(np.nanmean(listFSS_fcst, axis = 0), index = dictFSS[tuple(dictFSS.keys())[0]].index, columns = dictFSS[tuple(dictFSS.keys())[0]].columns)
+        dfFSS_mean = pd.DataFrame(
+            np.nanmean(listFSS_fcst, axis = 0), 
+            index = dictFSS[tuple(dictFSS.keys())[0]].index, 
+            columns = dictFSS[tuple(dictFSS.keys())[0]].columns
+        )
         fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-        PlotFSSInAxis(ax, dfFSS_mean.round(2), title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}', xLabel = 'Scale', yLabel = 'Threshold')
-        fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}_mean.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        PlotFSSInAxis(
+            ax, 
+            dfFSS_mean.round(2), 
+            title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}', 
+            xLabel = 'Scale', 
+            yLabel = 'Threshold'
+        )
+        fig.savefig(
+            f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}_mean.png', 
+            dpi = 600, 
+            bbox_inches = 'tight', 
+            pad_inches = 0.05
+        )
         plt.close()
         SavePickle(dictFSS, f'pickles/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
         
         with sns.axes_style('darkgrid'):
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-            PlotSALinAxis(ax, dfSAL.dropna()['Structure'].values, dfSAL.dropna()['Amplitude'].values, dfSAL.dropna()['Location'].values, title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}_all.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
+            PlotSALinAxis(
+                ax, 
+                dfSAL.dropna()['Structure'].values, 
+                dfSAL.dropna()['Amplitude'].values, 
+                dfSAL.dropna()['Location'].values, 
+                title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}'
+            )
+            fig.savefig(
+                f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}_all.png', 
+                dpi = 600, 
+                bbox_inches = 'tight', 
+                pad_inches = 0.05
+            )   
             plt.close()
-            SavePickle(dfSAL, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
+            pickle_sal['values'] = dfSAL.copy()
+            SavePickle(pickle_sal, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
 
         # violin plot FSS
         with sns.axes_style('whitegrid'):
@@ -192,19 +298,49 @@ def main(obs, case, exp):
                 df = pd.DataFrame(fssValuesFixedThres)
                 ax = fig.add_subplot(len(thresh), 1, iterator + 1)
                 if iterator == 0:
-                    PlotViolinInAxis(ax, df, title = f'FSS distribution - {exp_model} | {exp} | {obs} | {init_time}', yLabel = f'FSS {row}')
+                    PlotViolinInAxis(
+                        ax, 
+                        df, 
+                        title = f'FSS distribution - {exp_model} | {exp} | {obs} | {init_time}', 
+                        yLabel = f'FSS {row}'
+                    )
                 elif iterator == (len(thresh) - 1):
-                    PlotViolinInAxis(ax, df, xLabel = f'Scale', yLabel = f'FSS {row}')
+                    PlotViolinInAxis(
+                        ax, 
+                        df, 
+                        xLabel = f'Scale', 
+                        yLabel = f'FSS {row}'
+                    )
                 else:
-                    PlotViolinInAxis(ax, df, yLabel = f'FSS {row}')
-            fig.savefig(f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
+                    PlotViolinInAxis(
+                        ax, 
+                        df, 
+                        yLabel = f'FSS {row}'
+                    )
+            fig.savefig(
+                f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', 
+                dpi = 300, 
+                bbox_inches = 'tight', 
+                pad_inches = 0.05
+            )
             plt.close()
         
         # violin plot SAL
         with sns.axes_style('whitegrid'):
             fig, ax = plt.subplots(figsize=(14. / 2.54, 6.0 / 2.54), clear = True)
-            PlotViolinInAxis(ax, dfSAL, title = f'SAL distribution - {exp_model} | {exp} | {obs} | {init_time}', yLabel = 'SAL', yLim = [-2.1, 2.1])
-            fig.savefig(f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0.05)
+            PlotViolinInAxis(
+                ax, 
+                dfSAL, 
+                title = f'SAL distribution - {exp_model} | {exp} | {obs} | {init_time}', 
+                yLabel = 'SAL', 
+                yLim = [-2.1, 2.1]
+            )
+            fig.savefig(
+                f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', 
+                dpi = 300, 
+                bbox_inches = 'tight', 
+                pad_inches = 0.05
+            )
             plt.close()
     return 0
 

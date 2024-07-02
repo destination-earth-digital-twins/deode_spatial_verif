@@ -1,9 +1,9 @@
 'model':
     'name': ''
 'format':
-    'filepaths': [,]
+    'filepaths': []
     'filename': ''
-    'extension': ''
+    'fileformat': ''
 'inits':
     '':
         'path': 
@@ -12,9 +12,9 @@
     '':
         'var': 
         'accum': 
-        'verif_0h': 
         'postprocess': ''
-        'negative_values': 
+        'find_min':
+        'verif_0h':  
     'lat':
         'var': ''
         'description': ''
