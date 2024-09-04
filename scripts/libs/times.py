@@ -25,6 +25,6 @@ def replace_function(text, replace_with):
         return "*"
 
 def lead_time_replace(text, replace_with = '*'):
-    pattern = r'(%LL+)'
+    pattern = r'(%L+)'
     new_text = re.sub(pattern, lambda match: replace_function(match.group(0), replace_with), text)
     return new_text

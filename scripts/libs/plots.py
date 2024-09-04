@@ -170,6 +170,6 @@ def plot_detected_objects(observation_objects, prediction_objects, cmap = None, 
                 ax.set_xticks([])
                 ax.set_yticks([])
                 iteratorRow += 1
-    fig.subplots_adjust(top=(1.0 - 1.2 / fig_height))
+    # fig.subplots_adjust(top=(1.0 - 0.9 / fig_height))
     fig.suptitle(f"Detected objects", fontsize = 8, fontweight = 'bold')
     return fig

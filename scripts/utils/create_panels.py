@@ -4,6 +4,7 @@
 Based on https://stackoverflow.com/questions/30227466/combine-several-images-horizontally-with-python
 """
 
+import os
 import sys
 sys.path.append('scripts/libs/')
 from datetime import datetime, timedelta
@@ -44,33 +45,35 @@ def main(obs, case, exp):
         print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
         
         for lead_time in lead_times:
-            imagesRowBot = []
-            for x in [f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(lead_time).zfill(2)}.png']:
-                try:
-                    imagesRowBot.append(Image.open(x))
-                except FileNotFoundError:
-                    pass
-            imagesRowTop = [Image.open(x) for x in [f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_regrid_vs_{obs}_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png']]
-
-            widthsRowBot, heightsRowBot = zip(*(i.size for i in imagesRowBot))
-            widthsRowTop, heightsRowTop = zip(*(i.size for i in imagesRowTop))
-
-            max_width = max(sum(widthsRowBot), sum(widthsRowTop))
-            max_height = max(sum([heightsRowBot[0], max(heightsRowTop)]), sum([heightsRowBot[-1], max(heightsRowTop)]))
-
-            new_im = Image.new('RGB', (max_width, max_height))
-
-            x_offset, y_offset = 0, 0
-            for imBot in imagesRowTop:
-                new_im.paste(imBot, (x_offset,y_offset))
-                x_offset += imBot.size[0]
-
-            x_offset, y_offset = 0, min(heightsRowTop)
-            for imTop in imagesRowBot:
-                new_im.paste(imTop, (x_offset,y_offset))
-                x_offset += imTop.size[0]
-
-            new_im.save(f'PLOTS/side_plots/plots_verif/panels/{obs}/{case}/{exp}/panel_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png')
+            file_plot_regrid = f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_regrid_vs_{obs}_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png'
+            if os.path.isfile(file_plot_regrid):
+                imagesRowBot = []
+                for x in [f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(lead_time).zfill(2)}.png']:
+                    try:
+                        imagesRowBot.append(Image.open(x))
+                    except FileNotFoundError:
+                        pass
+                imagesRowTop = [Image.open(x) for x in [file_plot_regrid, f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png']]
+    
+                widthsRowBot, heightsRowBot = zip(*(i.size for i in imagesRowBot))
+                widthsRowTop, heightsRowTop = zip(*(i.size for i in imagesRowTop))
+    
+                max_width = max(sum(widthsRowBot), sum(widthsRowTop))
+                max_height = max(sum([heightsRowBot[0], max(heightsRowTop)]), sum([heightsRowBot[-1], max(heightsRowTop)]))
+    
+                new_im = Image.new('RGB', (max_width, max_height))
+    
+                x_offset, y_offset = 0, 0
+                for imBot in imagesRowTop:
+                    new_im.paste(imBot, (x_offset,y_offset))
+                    x_offset += imBot.size[0]
+    
+                x_offset, y_offset = 0, min(heightsRowTop)
+                for imTop in imagesRowBot:
+                    new_im.paste(imTop, (x_offset,y_offset))
+                    x_offset += imTop.size[0]
+    
+                new_im.save(f'PLOTS/side_plots/plots_verif/panels/{obs}/{case}/{exp}/panel_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png')
             
     return 0
 

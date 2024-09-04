@@ -10,35 +10,6 @@ def LoadConfigFileFromYaml(yamlFile):
         data_loaded = yaml.safe_load(stream)
     return data_loaded
 
-def CheckAndBuildGrid(lat, lon):
-    if len(lat.shape) != len(lon.shape):
-        raise ValueError('Shape of lat lon arrays must be the same')
-    if len(lat.shape) == 1:
-        lon2D, lat2D = np.meshgrid(lon, lat)
-    elif len(lat.shape) == 2:
-        lon2D = lon.copy()
-        lat2D = lat.copy()       
-    else:
-        raise ValueError(f'Shape of lat lon arrays not possible')
-    return lat2D.copy(), lon2D.copy() 
-    
-def GetLatLon2DfromNetCDF(ncFile, latName = 'lat', lonName = 'lon'):
-    lat, lon = GetVarsFromNetCDF(ncFile, [latName, lonName])
-    lat2D, lon2D = CheckAndBuildGrid(lat, lon)
-    return lat2D.copy(), lon2D.copy()
-
-def GetVarsFromNetCDF(ncFile, listVar):
-    print(f'INFO:LoadWriteData:reading {ncFile}')
-    with xr.open_dataset(ncFile) as ncDataset:
-        listArrays = []
-        for var in listVar:
-            print(f'INFO:LoadWriteData:get {var} values')
-            listArrays.append(ncDataset[var].values.copy())
-        if len(listVar) == 1:
-            return listArrays[0]
-        else:
-            return listArrays
-
 def check_is_typelist(var):
     if (isinstance(var, int) | isinstance(var, str) | isinstance(var, dict)):
         return [var]
@@ -46,6 +17,30 @@ def check_is_typelist(var):
         return var
     else:
         raise TypeError(f'wrong var dtype: {type(var)}')
+
+def get_vars_from_nc(file_nc, vars, date = None):
+    list_vars = check_is_typelist(vars)
+    print(f'INFO:LoadWriteData:reading {file_nc}')
+    with xr.open_dataset(file_nc) as nc_dataset:
+        if date is None:
+            date_get = nc_dataset.time.values[0]
+        else:
+            date_get = date
+        listArrays = []
+        for var in list_vars:
+            print(f'INFO:LoadWriteData:get {var} values')
+            if ((var == 'lat') | (var == 'lon')):
+                listArrays.append(nc_dataset[var].values.copy())
+            else:
+                listArrays.append(nc_dataset[var].sel(time=date_get).values.copy())
+        if len(list_vars) == 1:
+            return listArrays[0]
+        else:
+            return listArrays
+
+def get_lat_lon_from_nc(file_nc):
+    lat, lon = get_vars_from_nc(file_nc, vars = ['lat', 'lon'])
+    return lat.copy(), lon.copy()
         
 def get_lat_lon_raw_from_msg(msg):
     try:
@@ -110,20 +105,23 @@ def get_lat_lon_from_grib(file_grib):
     lat, lon = get_vars_from_grib(file_grib, vars = ['lat', 'lon'])
     return lat.copy(), lon.copy()
 
-def BuildXarrayDataset(data, lons, lats, times, varName = 'var', lonName = 'lon', latName = 'lat', timesName = 'time', descriptionNc = ''):
-    if ((len(data.shape) == 2) & (len(lons.shape) == 2) & (len(lats.shape) == 2) & (len([times]) == 1)):
-        ds = xr.Dataset(
-            data_vars = {varName: (["lon_dim", "lat_dim"], data)},
-            coords = {
-                lonName: (["lon_dim", "lat_dim"], lons),
-                latName: (["lon_dim", "lat_dim"], lats),
-                timesName: (times)
-            },
-            attrs=dict(description = descriptionNc)
-        )
-        return ds
-    else:
-        raise ValueError('data, lons and lats arguments must be bidimensional arrays. len(times) must be 1')
+def build_dataset(values, date, lat, lon, var_name, attrs_var = {}, attrs_nc = {}):
+    attrs_var.update({'coordinates': 'time lat lon'})
+    attrs_nc.update({'history': 'file created for spatial verification purposes'})
+    ds = xr.Dataset(
+        {var_name: xr.DataArray(
+            values.reshape(1, values.shape[0], values.shape[1]), 
+            dims = ['time', 'y', 'x'], 
+            attrs = attrs_var
+        )}, 
+        coords = {
+            'time': [date], 
+            'lat': (('y', 'x'), lat, {"units": "degrees_north"}), 
+            'lon': (('y', 'x'), lon, {"units": "degrees_north"}), 
+        },
+        attrs = attrs_nc
+    )
+    return ds.copy()
 
 def LoadPickle(pickleFile):
     file = open(pickleFile, 'rb')
