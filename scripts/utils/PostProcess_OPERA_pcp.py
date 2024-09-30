@@ -6,10 +6,10 @@ import pyproj
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from LoadWriteData import LoadConfigFileFromYaml, BuildXarrayDataset
+from LoadWriteData import LoadConfigFileFromYaml, build_dataset
 
-obs = 'OPERA_pcp'
-obs_filename_raw = 'ODC.LAM_%Y%m%d%H%M_000100.h5'
+obs = "OPERA_rain"
+obs_filename_raw = "T_PASH22_C_EUOC_%Y%m%d%H%M%S.hdf"#old: 'ODC.LAM_%Y%m%d%H%M_000100.h5'
 
 def make_dir_obs(obs, case):
     cwd = os.getcwd()
@@ -81,15 +81,30 @@ def main(path_OPERA_raw, case):
 
     obs_path = make_dir_obs(obs, case)
     
-    dates = pd.date_range(date_ini, date_end, freq = '1H').to_pydatetime()
+    dates = pd.date_range(date_ini, date_end, freq = '1h').to_pydatetime()
     for date in dates:
         file_obs = datetime.strftime(date, f'{path_OPERA_raw}{obs_filename_raw}')
         values = get_vars_from_OPERA(file_obs, [obs_var_get,])
         lat_obs, lon_obs = get_latlon2D_from_OPERA(file_obs)
-        ds = BuildXarrayDataset(np.flip(values, axis = 0), lon_obs, lat_obs, date, varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'OPERA | 1-hour accumulated precipitation | {datetime.strftime(date - timedelta(hours = 1), "%Y%m%d%H")}-{datetime.strftime(date, "%Y%m%d%H")}')
+        # ds = BuildXarrayDataset(np.flip(values, axis = 0), lon_obs, lat_obs, date, varName = var_verif, lonName = 'lon', latName = 'lat', descriptionNc = f'OPERA | 1-hour accumulated precipitation | {datetime.strftime(date - timedelta(hours = 1), "%Y%m%d%H")}-{datetime.strftime(date, "%Y%m%d%H")}')
+        ds = build_dataset(
+            np.flip(np.where(values == -8888000., 0.0, values), axis = 0),
+            date,
+            lat_obs,
+            lon_obs,
+            var_verif,
+            attrs_var={
+                "units": "mm",
+                "long_name": "OPERA NIMBUS 1-hour accumulation composite",
+                "_FillValue": "-9999000."
+            }
+        )
         file_new = datetime.strftime(date, f'{obs_path}{obs_filename}')
         print(f'INFO:saving processed values in {file_new}')
-        ds.to_netcdf(file_new, compute='True')
+        ds.to_netcdf(
+            file_new,
+            encoding={"time": {"units": "seconds since 1970-01-01"}}
+        )
     return 0
 
 if __name__ == '__main__':

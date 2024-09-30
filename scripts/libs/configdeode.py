@@ -148,22 +148,21 @@ class ConfigDeode(object):
                 "TIME_FCST": data["general"]["times"]["forecast_range"],
                 "NIMAX": data["domain"]["nimax"],
                 "NJMAX": data["domain"]["njmax"],
-                "XDX": data["domain"]["xdy"],
+                "XDX": data["domain"]["xdx"],
                 "XDY": data["domain"]["xdy"],
                 "XLATCEN": data["domain"]["xlatcen"],
                 "XLONCEN": data["domain"]["xloncen"],
                 "XLAT0": data["domain"]["xlat0"],
                 "XLON0": data["domain"]["xlon0"],
+                "PREV_CASE": data["system"]["prev_case"]
             }
             self.case_raw = data["general"]["case"]
             self.data["CASE"] = self._get_replaced_attr(self.case_raw)
             self.case_name = ConfigDeode.replace_select_chr(
-                self.case_raw,
+                self.data["PREV_CASE"],
                 dict_replace={
-                    "_@CYCLE@": "",
-                    "@CSC@": "",
-                    "_500M_cold": "_d01",
-                    "_200M": "_d02"
+                    "@CYCLE@": "",
+                    "@CSC@": ""
                 }
             )
             self.fp_path = os.path.join(

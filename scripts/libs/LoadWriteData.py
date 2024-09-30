@@ -1,8 +1,8 @@
 import yaml
 import numpy as np
-import xarray as xr
 import pygrib
 import h5py
+import xarray as xr
 import pickle
 
 def LoadConfigFileFromYaml(yamlFile):
@@ -46,8 +46,10 @@ def get_lat_lon_raw_from_msg(msg):
     try:
         lat, lon = msg.latlons()
     except ValueError:
-        lat = msg.latitudes.reshape(msg.values.shape)
-        lon = msg.longitudes.reshape(msg.values.shape)
+        n_x = msg.Nx
+        n_y = msg.Ny
+        lat = msg.latitudes.reshape((n_y, n_x))
+        lon = msg.longitudes.reshape((n_y, n_x))
     return lat.copy(), lon.copy()
 
 def get_msg_from_code(grib_obj, code):
@@ -92,9 +94,9 @@ def get_vars_from_grib(file_grib, vars):
             except RuntimeError:
                 print('INFO:LoadWriteData:get values')
             if lat_must_flip:
-                values_to_get.append(np.flipud(grb.values))
+                values_to_get.append(np.flipud(grb["values"]))
             else:
-                values_to_get.append(grb.values.copy())
+                values_to_get.append(grb["values"])
     grbs.close()
     if len(list_vars) == 1:
         return values_to_get[0]
@@ -130,6 +132,6 @@ def LoadPickle(pickleFile):
     return data
 
 def SavePickle(var, filename):
-    file = open(f'{filename}.pkl', 'wb')
+    file = open(filename, 'wb')
     pickle.dump(var.copy(), file)
     file.close()

@@ -9,6 +9,7 @@ from matplotlib.colors import from_levels_and_colors
 import sys
 
 sys.path.append('scripts/libs/')
+from namingformatter import NamingFormatter
 from LoadWriteData import LoadConfigFileFromYaml, LoadPickle, SavePickle
 from times import set_lead_times
 from domains import set_domain_verif, CropDomainsFromBounds
@@ -60,6 +61,9 @@ def main(obs, case, exp):
     find_min = config_exp['vars'][var_verif]['find_min']
     print(f'INFO: Load config file for {exp} simulation: \n model: {exp_model}; variable to extract: {var_verif} ({config_obs_db["vars"][var_verif]["description"]}); units: {var_verif_units}')
 
+    # naming formatter
+    formatter = NamingFormatter(obs, case, exp)
+    
     # FSS & SAL params
     thresh = config_obs_db['vars'][var_verif]['FSS']['thresholds']
     scales = config_obs_db['vars'][var_verif]['FSS']['scales']
@@ -90,12 +94,18 @@ def main(obs, case, exp):
             pass
         print(f'INFO: Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
 
-        file_pickle_fss = f'pickles/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}.pkl'
+        file_pickle_fss = formatter.format_string(
+            "pickle_fss", init_time=init_time
+        )
         if os.path.isfile(file_pickle_fss):
             print(f"INFO: Verification scores found for init {init_time}")
             dictFSS = LoadPickle(file_pickle_fss)
             verified_lt = np.array([int(lt_str) for lt_str in dictFSS.keys()])
-            pickle_sal = LoadPickle(f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}.pkl')
+            pickle_sal = LoadPickle(
+                formatter.format_string(
+                    "pickle_sal", init_time=init_time
+                )
+            )
             dfSAL = pickle_sal["values"].copy() # Final pandas.dataframe with SAL verification (columns) at each lead time (rows)
             detect_params_old = detect_params.copy()
             for key in detect_params_old.keys():
@@ -122,7 +132,9 @@ def main(obs, case, exp):
                 date_simus_ini + timedelta(hours = lead_time.item()), 
                 f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}'
             )
-            file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
+            file_nwp = formatter.format_string(
+                "regrid", init_time=init_time, lead_time=lead_time.item()
+            )
             if os.path.isfile(file_obs) and os.path.isfile(file_nwp):
                 data_obs = get_data_function[obs_fileformat](file_obs, [obs_var_get])
                 obs_lat, obs_lon = get_grid_function[obs_fileformat](file_obs)
@@ -184,12 +196,16 @@ def main(obs, case, exp):
                 PlotFSSInAxis(
                     ax, 
                     dictFSS[str(lead_time).zfill(2)].round(2), 
-                    title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_time).zfill(2)}', 
+                    title = formatter.format_string(
+                        "title_fss", init_time=init_time, lead_time=lead_time.item()
+                    ),
                     xLabel = 'Scale', 
                     yLabel = 'Threshold'
                 )
                 fig.savefig(
-                    f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png', 
+                    formatter.format_string(
+                        "plot_fss", init_time=init_time, lead_time=lead_time.item()
+                    ),
                     dpi=600, 
                     bbox_inches='tight', 
                     pad_inches = 0.05
@@ -229,14 +245,20 @@ def main(obs, case, exp):
                     norm = norm
                 )
                 fig.savefig(
-                    f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/DetectedObjects_{obs}_{exp}_{init_time}+{str(lead_time).zfill(2)}.png', 
+                    formatter.format_string(
+                        "plot_objects",
+                        init_time=init_time,
+                        lead_time=lead_time.item()
+                    ),
                     dpi = 600, 
                     bbox_inches = 'tight', 
                     pad_inches = 0.05
                 )
     
                 # plot SAL at each lead time
-                figname_sal = f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}+{str(lead_time).zfill(2)}.png'
+                figname_sal = formatter.format_string(
+                    "plot_sal", init_time=init_time, lead_time=lead_time.item()
+                )
                 if len(dfSALrow.dropna()) > 0:
                     with sns.axes_style('darkgrid'):
                         fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
@@ -245,7 +267,9 @@ def main(obs, case, exp):
                             dfSAL.loc[str(lead_time).zfill(2), 'Structure'], 
                             dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], 
                             dfSAL.loc[str(lead_time).zfill(2), 'Location'], 
-                            title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{lead_time}'
+                            title = formatter.format_string(
+                                "title_sal", init_time=init_time, lead_time=lead_time.item()
+                            )
                         )
                         fig.savefig(
                             figname_sal, 
@@ -278,12 +302,16 @@ def main(obs, case, exp):
             PlotFSSInAxis(
                 ax, 
                 dfFSS_mean.round(2), 
-                title = f'FSS plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}', 
+                title = formatter.format_string(
+                    "title_fss_period", init_time=init_time, lead_time=lead_times
+                ),
                 xLabel = 'Scale', 
                 yLabel = 'Threshold'
             )
             fig.savefig(
-                f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}_mean.png', 
+                formatter.format_string(
+                    "plot_fss_init", init_time=init_time
+                ),
                 dpi = 600, 
                 bbox_inches = 'tight', 
                 pad_inches = 0.05
@@ -297,14 +325,18 @@ def main(obs, case, exp):
                     dfSAL.dropna()['Structure'].values, 
                     dfSAL.dropna()['Amplitude'].values, 
                     dfSAL.dropna()['Location'].values, 
-                    title = f'SAL plot \n{exp_model} [{exp}] | {obs} \nValid: {init_time}+{str(lead_times[0]).zfill(2)}-{init_time}+{str(lead_times[-1]).zfill(2)}'
+                    title = formatter.format_string(
+                        "title_sal_period", init_time=init_time, lead_time=lead_times
+                    )
                 )
                 fig.savefig(
-                    f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}_all.png', 
+                    formatter.format_string(
+                        "plot_sal_init", init_time=init_time
+                    ),
                     dpi = 600, 
                     bbox_inches = 'tight', 
                     pad_inches = 0.05
-                )   
+                )
                 plt.close()
     
             # violin plot FSS
@@ -322,7 +354,9 @@ def main(obs, case, exp):
                         PlotViolinInAxis(
                             ax, 
                             df, 
-                            title = f'FSS distribution - {exp_model} | {exp} | {obs} | {init_time}', 
+                            title = formatter.format_string(
+                                "title_fss_dist", init_time=init_time
+                            ), 
                             yLabel = f'FSS {row}'
                         )
                     elif iterator == (len(thresh) - 1):
@@ -339,7 +373,9 @@ def main(obs, case, exp):
                             yLabel = f'FSS {row}'
                         )
                 fig.savefig(
-                    f'PLOTS/side_plots/plots_verif/FSS/{obs}/{case}/{exp}/FSSdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', 
+                    formatter.format_string(
+                        "plot_fss_dist", init_time=init_time
+                    ),
                     dpi = 300, 
                     bbox_inches = 'tight', 
                     pad_inches = 0.05
@@ -352,12 +388,16 @@ def main(obs, case, exp):
                 PlotViolinInAxis(
                     ax, 
                     dfSAL, 
-                    title = f'SAL distribution - {exp_model} | {exp} | {obs} | {init_time}', 
+                    title = formatter.format_string(
+                        "title_sal_dist", init_time=init_time
+                    ), 
                     yLabel = 'SAL', 
                     yLim = [-2.1, 2.1]
                 )
                 fig.savefig(
-                    f'PLOTS/side_plots/plots_verif/SAL/{obs}/{case}/{exp}/SALdist_{exp_model_in_filename}_{exp}_{obs}_{init_time}.png', 
+                    formatter.format_string(
+                        "plot_sal_dist", init_time=init_time
+                    ),
                     dpi = 300, 
                     bbox_inches = 'tight', 
                     pad_inches = 0.05
@@ -366,10 +406,20 @@ def main(obs, case, exp):
 
         # save pickles
         dictFSS_sort = dict(sorted(dictFSS.items()))
-        SavePickle(dictFSS, f'pickles/FSS/{obs}/{case}/{exp}/FSS_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
+        SavePickle(
+            dictFSS,
+            formatter.format_string(
+                "pickle_fss", init_time=init_time
+            )
+        )
         dfSAL.sort_index(inplace=True)
         pickle_sal['values'] = dfSAL.copy()
-        SavePickle(pickle_sal, f'pickles/SAL/{obs}/{case}/{exp}/SAL_{exp_model_in_filename}_{exp}_{obs}_{init_time}')
+        SavePickle(
+            pickle_sal,
+            formatter.format_string(
+                "pickle_sal", init_time=init_time
+            )
+        )
     return 0
 
 if __name__ == '__main__':

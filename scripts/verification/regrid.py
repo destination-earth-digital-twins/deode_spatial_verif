@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import sys
 
 sys.path.append('scripts/libs/')
+from namingformatter import NamingFormatter
 from miscelanea import check_is_empty_dir
 from LoadWriteData import LoadConfigFileFromYaml, build_dataset
 from times import set_lead_times, lead_time_replace
@@ -53,6 +54,9 @@ def main(obs, case, exp):
     verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     postprocess = config_exp['vars'][var_verif]['postprocess']
     print(f'INFO: Load config file for {exp} simulation: \n model: {exp_model}; file paths: {exp_filepaths}; file name: {exp_filename}; file format: {exp_fileformat}; var. to get: {exp_var_get} ({var_verif})')
+
+    # naming formatter
+    formatter = NamingFormatter(obs, case, exp)
     
     # init times of nwp
     for init_time in config_exp['inits'].keys():
@@ -94,7 +98,7 @@ def main(obs, case, exp):
             simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
             obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
             simus_lat_orig, simus_lon_orig = get_grid_function[exp_fileformat](simus_file)
-            
+
             # crop data to avoid ram issues
             obs_lat = CropDomainsFromBounds(obs_lat_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
             obs_lon = CropDomainsFromBounds(obs_lon_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
@@ -138,17 +142,29 @@ def main(obs, case, exp):
                     data = data_fp, 
                     lat = simus_lat, 
                     lon = simus_lon, 
-                    extent = case_domain, 
-                    title = f'{exp_model} [exp: {exp}] (orig grid)\nRun: {init_time} UTC\nValid on {valid_time.strftime("%Y-%m-%d at %Hz")} (+{str(lead_time).zfill(2)})', 
+                    extent = case_domain,
+                    title = formatter.format_string(
+                        template="title_orig",
+                        valid_time=valid_time,
+                        init_time=init_time,
+                        lead_time=lead_time.item()
+                    ),
                     cb_label = f'{var_verif_description} ({var_verif_units})', 
                     left_grid_label = False, 
                     right_grid_label = True, 
                     cmap = colormaps[var_verif]['map'], 
                     norm = colormaps[var_verif]['norm']
                 )
-                fig.savefig(f'PLOTS/side_plots/plots_{obs}/{case}/{exp}/{exp_model_in_filename}_{exp}_orig_{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png', dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+                fig.savefig(
+                    formatter.format_string(
+                        "plot_orig", init_time=init_time, lead_time=lead_time.item()
+                    ),
+                    dpi=600,
+                    bbox_inches='tight',
+                    pad_inches=0.05
+                )
                 plt.close(0)
-    
+                
                 # regridding simus
                 print(f'Regridding {init_time}+{str(lead_time).zfill(2)} time step from {exp} (original grid)')
                 regridded_data = griddata(
@@ -159,7 +175,6 @@ def main(obs, case, exp):
                 )
     
                 # write netCDF
-                file_output = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
                 ds = build_dataset(
                     values=regridded_data, 
                     date=date_simus_ini + timedelta(hours=lead_time.item()), 
@@ -168,7 +183,12 @@ def main(obs, case, exp):
                     var_name=var_verif, 
                     attrs_var={'units': var_verif_units, 'long_name': var_verif_description}
                 )
-                ds.to_netcdf(file_output, encoding = {'time': {'units': 'seconds since 1970-01-01'}})
+                ds.to_netcdf(
+                    formatter.format_string(
+                        "regrid", init_time=init_time, lead_time=lead_time.item()
+                    ),
+                    encoding={'time': {'units': 'seconds since 1970-01-01'}}
+                )
                 print('... DONE')
         else:
             print(

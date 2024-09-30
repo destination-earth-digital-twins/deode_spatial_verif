@@ -5,9 +5,10 @@ from datetime import datetime, timedelta
 import sys
 
 sys.path.append('scripts/libs/')
+from namingformatter import NamingFormatter
 from LoadWriteData import LoadConfigFileFromYaml
 from dicts import get_data_function, colormaps
-from times import set_lead_times
+from times import set_lead_times, lead_time_replace
 from domains import set_domain_verif
 from plots import PlotMapInAxis, plot_verif_domain_in_axis
 from miscelanea import list_sorted_files
@@ -46,6 +47,9 @@ def main(obs, case, exp):
     verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     print(f'INFO: Load config file for {exp} regridded experiment: \n model: {exp_model}; variable to extract: {var_verif} ({var_verif_description}, in {var_verif_units})')
 
+    # naming formatter
+    formatter = NamingFormatter(obs, case, exp)
+
     # init times of nwp
     for init_time in config_exp['inits'].keys():
         date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
@@ -64,20 +68,28 @@ def main(obs, case, exp):
 
         # check if this init_time is completed
         figures_init_time = list_sorted_files(
-            f"PLOTS/side_plots/plots_{obs}/{case}/{exp}/" \
-                + f"*_{exp}_regrid_vs_{obs}_{init_time}" \
-                + f"+*_pcolormesh.png"
+            lead_time_replace(
+                formatter.format_string(
+                    "plot_regrid", init_time=init_time
+                )
+            )
         )
         if len(figures_init_time) != len(lead_times):
 
             # plot OBS vs Regrid exp at each timestep
             for lead_time in lead_times:
-                fig_name = f"PLOTS/side_plots/plots_{obs}/{case}/{exp}/" \
-                    + f"{exp_model_in_filename}_{exp}_regrid_vs_{obs}_" \
-                    + f"{init_time}+{str(lead_time).zfill(2)}_pcolormesh.png"
+                fig_name = formatter.format_string(
+                    "plot_regrid",
+                    init_time=init_time,
+                    lead_time=lead_time.item()
+                )
                 if not os.path.isfile(fig_name):
                     obs_file = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-                    file_nwp = f'SIMULATIONS/{exp}/data_regrid/{init_time}/{exp_model_in_filename}_{exp}_{var_verif}_{obs_db}grid_{init_time}+{str(lead_time).zfill(2)}.nc'
+                    file_nwp = formatter.format_string(
+                        "regrid",
+                        init_time=init_time,
+                        lead_time=lead_time.item()
+                    )
                     if os.path.isfile(obs_file) and os.path.isfile(file_nwp):
                         data_obs, lat_obs, lon_obs = get_data_function[obs_fileformat](obs_file, [obs_var_get, 'lat', 'lon'])
                         data_nwp, lat_nwp, lon_nwp = get_data_function['netCDF'](file_nwp, [var_verif, 'lat', 'lon'])
@@ -94,13 +106,16 @@ def main(obs, case, exp):
                         fig = plt.figure(0, figsize = (20.0 / 2.54, 11.0 / 2.54), dpi = 600, clear = True)
             
                         ax1 = fig.add_subplot(1, 2, 1, projection=ccrs.PlateCarree())
-                        ax1, cbar1 = PlotMapInAxis(
+                        ax1, _ = PlotMapInAxis(
                             ax = ax1, 
                             data = data_obs, 
                             lat = lat_obs, 
                             lon = lon_obs, 
                             extent = bounds_NOzoom, 
-                            title = f'{obs_db}\nValid on {valid_time.strftime("%Y-%m-%d at %Hz")}', 
+                            title = formatter.format_string(
+                                template="title_obs",
+                                valid_time=valid_time
+                            ),
                             cb_label = f'{var_verif_description} ({var_verif_units})', 
                             cmap = colormaps[var_verif]['map'], 
                             norm = colormaps[var_verif]['norm']
@@ -108,13 +123,18 @@ def main(obs, case, exp):
                         ax1 = plot_verif_domain_in_axis(ax1, verif_domain, lat_obs, lon_obs)
             
                         ax2 = fig.add_subplot(1, 2, 2, projection=ccrs.PlateCarree())
-                        ax2, cbar2 = PlotMapInAxis(
+                        ax2, _ = PlotMapInAxis(
                             ax = ax2, 
                             data = data_nwp, 
                             lat = lat_nwp, 
                             lon = lon_nwp, 
                             extent = bounds_NOzoom, 
-                            title = f'{exp_model} [exp: {exp}] (regrid)\nRun: {init_time} UTC\nValid on {valid_time.strftime("%Y-%m-%d at %Hz")} (+{str(lead_time).zfill(2)})', 
+                            title = formatter.format_string(
+                                template="title_regrid",
+                                valid_time=valid_time,
+                                init_time=init_time,
+                                lead_time=lead_time.item()
+                            ),
                             cb_label = f'{var_verif_description} ({var_verif_units})', 
                             left_grid_label = False, 
                             right_grid_label = True, 
