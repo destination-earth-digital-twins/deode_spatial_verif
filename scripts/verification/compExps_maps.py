@@ -88,13 +88,13 @@ def main(obs, case, exps):
             values_databases[obs_db].append(obs_values.copy())
 
             expLowRes_file = formatter[expLowRes].format_string(
-                "regrid", init_time=init_time, lead_time=lead_time.item()
+                "regrid", init_time=init_time, lead_time=int(lead_time)
             )
             expLowRes_values, expLowRes_lat, expLowRes_lon = get_data_function['netCDF'](expLowRes_file, [var_verif, 'lat', 'lon'])
             values_databases[expLowRes].append(expLowRes_values.copy())
 
             expHighRes_file = formatter[expHighRes].format_string(
-                "regrid", init_time=init_time, lead_time=lead_time.item()
+                "regrid", init_time=init_time, lead_time=int(lead_time)
             )
             expHighRes_values, expHighRes_lat, expHighRes_lon = get_data_function['netCDF'](expHighRes_file, [var_verif, 'lat', 'lon'])
             values_databases[expHighRes].append(expHighRes_values.copy())
@@ -106,7 +106,7 @@ def main(obs, case, exps):
             verif_domain = set_domain_verif(date_exp_ini + timedelta(hours = int(lead_time)), verif_domains)
             if verif_domain is None:
                 verif_domain = [expHighRes_lon_orig[:, 0].max() + 0.5, expHighRes_lon_orig[:, -1].min() - 0.5, expHighRes_lat_orig[0, :].max() + 0.5, expHighRes_lat_orig[-1, :].min() - 0.5]
-                print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")} UTC. By default: {verif_domain}')
+                print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours=int(lead_time)), "%Y%m%d%H")} UTC. By default: {verif_domain}')
 
             # Build the frame
             print(f'plotting {expLowRes_file} vs {obs_file} vs {expHighRes_file}')
@@ -123,7 +123,7 @@ def main(obs, case, exps):
                         template="title_regrid",
                         valid_time=valid_time,
                         init_time=init_time,
-                        lead_time=lead_time.item()
+                        lead_time=int(lead_time)
                     )
                 ax, cbar = PlotMapInAxis(
                     ax = ax, 
@@ -143,7 +143,7 @@ def main(obs, case, exps):
                 formatter[expLowRes].format_string(
                     template="plot_frame",
                     init_time=init_time,
-                    lead_time=lead_time.item()
+                    lead_time=int(lead_time)
                 ).replace(expLowRes, exps).replace("-VS-", "_"),
                 dpi=300,
                 bbox_inches='tight',
@@ -223,7 +223,7 @@ def main(obs, case, exps):
     imageio.mimsave(
         formatter[expLowRes].format_string(
             template="plot_gif"
-        ).replace(expLowRes, exps).replace("-VS-", "_")
+        ).replace(expLowRes, exps).replace("-VS-", "_"),
         gif,
         duration = 0.5
     )
