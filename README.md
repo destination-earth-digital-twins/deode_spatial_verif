@@ -48,9 +48,9 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
         -   SAL. Parameters to be used in SAL. These parameters are only used for object detection, which is required to compute structure and location values.
 
-            -   **f**. \[float\]. Multiplicative factor to apply in the SAL methodology following (Wernli et al., 2008). The value they set is 1/15.
+            -   **f**. \[float\]. Multiplicative factor to apply in the SAL methodology following [(Wernli et al., 2008)](https://journals.ametsoc.org/view/journals/mwre/136/11/2008mwr2415.1.xml). The value they set is 1/15.
 
-            -   **q**. \[float\]. Quartile of the observations/experiments to be estimated to set an object detection threshold. A value of 0.95 is recommended to avoid outliers (Gilleland et al., 2009).
+            -   **q**. \[float\]. Quartile of the observations/experiments to be estimated to set an object detection threshold. A value of 0.95 is recommended to avoid outliers [(Gilleland et al., 2009)](https://journals.ametsoc.org/view/journals/wefo/24/5/2009waf2222269_1.xml).
 
             -   **tstorm_kwargs**. \[dict\]. Additional object detection parameters. See [tstorm](https://github.com/pySTEPS/pysteps/blob/master/pysteps/feature/tstorm.py) for further details.
 
@@ -66,7 +66,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **NOzoom**. \[list\]. List of plotting domain coordinates \[\<lon_min\>, \<lon_max\>, \<lat_min\>, \<lat_max\>\].
 
--   verif_domain. A sequence of verification domains to be used as a common domain for the spatial verification of the experiments. If at the initial timestep where the event starts (see [\"dates\": \"ini\"](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#case-config-file-config_caseyaml)) there is no verification domain defined, a cropping of the domain of the experiment to be verified is performed. This is not recommended since it does not ensure a common verification domain between different experiments of a common case. The sequence of different verification domains at different time instants allows the tracking of a moving event. The [Ianos medicane](https://github.com/DEODE-NWP/DE330.5.3.2_Deliverable_annexes/blob/main/Ianos_Medicane_DTOD_spatial_verification.pdf) is an example.
+-   verif_domain. A sequence of verification domains to be used as a common domain for the spatial verification of the experiments. If at the initial timestep where the event starts (\"dates\": \"ini\") there is no verification domain defined, a cropping of the domain of the experiment to be verified is performed. This is not recommended since it does not ensure a common verification domain between different experiments of a common case. The sequence of different verification domains at different time instants allows the tracking of a moving event. The [Ianos medicane](https://github.com/DEODE-NWP/DE330.5.3.2_Deliverable_annexes/blob/main/Ianos_Medicane_DTOD_spatial_verification.pdf) is an example.
 
     -   **\<%Y%m%d%H\>(\[str\])**. \[list\] List of verification domain coordinates \[\<lon_min\>, \<lon_max\>, \<lat_min\>, \<lat_max\>\].
 
@@ -88,7 +88,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **\<inittime\>**. \[str\]. Format: \"%Y%m%d%H\".
 
-        -   **path**. \[int\]. Element of the [\"format\": \"filepaths\"](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#experiment-config-file-config_expyaml) list to be used for this initialization. It is specified with an integer, where 0 indicates the first element. This allows selecting the appropriate domain in the case that two different domains of the same experiment include this initialization.
+        -   **path**. \[int\]. Element of the \"format\": \"filepaths\" list to be used for this initialization. It is specified with an integer, where 0 indicates the first element. This allows selecting the appropriate domain in the case that two different domains of the same experiment include this initialization.
 
         -   **fcast_horiz**. \[str\]. Time (UTC) when the verification of this initialization is to be finished. It must be in the format \"%Y%m%d%H\". This may be because the event ends at that timestep or the experiment's forecast horizon do not reach that timestep. It also allows to exclude timesteps where the event has moved and does not fall within the domain of the experiment.
 
@@ -96,11 +96,11 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **\<var_verif\>**. \[str\]. Variable name to be verified. Possible values are: pcp (precipitation), bt (brightness temperature), rain (rainfall), refl (maximum reflectivity).
 
-        -   **var**. \[int, str or dict\]. Variable to get from the experiment files. If [\"format\": \"extension\"](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#experiment-config-file-config_expyaml) is "Grib", \"var\" can be: 1) an integer with the message number associated to the verification variable; 2) a string in \"\<short_name\>\|\<level\>\" format; or 3) a dictionary with the keys and values of the grib message to be selected.
+        -   **var**. \[int, str or dict\]. Variable to get from the experiment files. If \"format\": \"fileformat\" is "Grib", \"var\" can be: 1) an integer with the message number associated to the verification variable; 2) a string in \"\<short_name\>\|\<level\>\" format; or 3) a dictionary with the keys and values of the grib message to be selected.
 
         -   **accum**. \[bool\]. Boolean value. It indicates whether \"var\" is cumulative or not. If true, the previous hour is subtracted from the current hour to compute the current hourly accumulated value.
 
-        -   **postprocess**. \[str\]. If not \"None\", the code looks for this key in the postprocess_function dictionary (from [dicts.py](https://github.com/DEODE-NWP/deode_spatial_verif/blob/main/scripts/libs/dicts.py)) which will get the function with which to perform the postprocess transformation "var" to \<var_verif\>. This function must be developed in [PostProcess.py](https://github.com/DEODE-NWP/deode_spatial_verif/blob/main/scripts/libs/PostProcess.py) (note differences with [\"vars\": \<var_verif\>: \"postprocess\"](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#observation-config-file-config_obs_dbyaml)).
+        -   **postprocess**. \[str\]. If not \"None\", the code looks for this key in the `postprocess_function` dictionary (from [dicts.py](https://github.com/DEODE-NWP/deode_spatial_verif/blob/main/scripts/libs/dicts.py)) which will get the function with which to perform the postprocess transformation "var" to \<var_verif\>. This function must be developed in [PostProcess.py](https://github.com/DEODE-NWP/deode_spatial_verif/blob/main/scripts/libs/PostProcess.py) (note differences with [\"vars\": \<var_verif\>: \"postprocess\"](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#observation-config-file-config_obs_dbyaml)).
 
         -   **find_min**. \[bool\]. Boolean value. It indicates whether the variable should be analysed for minimum values. This argument allows the application of the FSS and SAL methods of [pysteps](https://github.com/pySTEPS/pysteps/blob/master/pysteps/verification/interface.py), which are developed to analyse fields above a certain threshold and not values below this threshold. For instance, brightness temperature is a magnitude where minimum values are of interest to analyse.
 
@@ -154,9 +154,11 @@ properly created. In particular:
 
 ## scripts/downloads/download\_\<OBS\>.py
 
-To execute these scripts, username and password in nasa (for IMERG) and
-access credentials (key + password, for SEVIRI) are required. They can
-be executed via terminal: `python3 download_<OBS>.py <Case> <user/key> <password/token>`
+To execute these scripts, username and password in [Earthdata](https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&redirect_uri=http%3A%2F%2Fdisc.gsfc.nasa.gov%2Flogin%2Fcallback&client_id=C_kKX7TXHiCUqzt352ZwTQ) (for IMERG) and
+access credentials in [EUMETSAT](https://eoportal.eumetsat.int/cas/login?service=https%3A%2F%2Feoportal.eumetsat.int%2Fcas%2Fidp%2Fprofile%2FSAML2%2FCallback%3FentityId%3Dapi.eumetsat.int%26SAMLRequest%3DPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c2FtbHA6QXV0aG5SZXF1ZXN0IHhtbG5zOnNhbWxwPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6cHJvdG9jb2wiIEFzc2VydGlvbkNvbnN1bWVyU2VydmljZVVSTD0iaHR0cHM6Ly9hcGkuZXVtZXRzYXQuaW50L2NvbW1vbmF1dGgiIERlc3RpbmF0aW9uPSJodHRwczovL2VvcG9ydGFsLmV1bWV0c2F0LmludC9jYXMvaWRwL3Byb2ZpbGUvU0FNTDIvUE9TVC9TU08iIEZvcmNlQXV0aG49ImZhbHNlIiBJRD0iX2FmODgzYWQwOTllZjA1MGMxOTcxODdkNWFmOGVlYTYwIiBJc1Bhc3NpdmU9ImZhbHNlIiBJc3N1ZUluc3RhbnQ9IjIwMjQtMTAtMTBUMDg6NDE6NTEuMDE1WiIgVmVyc2lvbj0iMi4wIj48c2FtbHA6SXNzdWVyIHhtbG5zOnNhbWxwPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXNzZXJ0aW9uIj5hcGkuZXVtZXRzYXQuaW50PC9zYW1scDpJc3N1ZXI%252BPHNhbWwycDpSZXF1ZXN0ZWRBdXRobkNvbnRleHQgeG1sbnM6c2FtbDJwPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6cHJvdG9jb2wiIENvbXBhcmlzb249ImV4YWN0Ij48c2FtbDI6QXV0aG5Db250ZXh0Q2xhc3NSZWYgeG1sbnM6c2FtbDI9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDphc3NlcnRpb24iPm51bGw8L3NhbWwyOkF1dGhuQ29udGV4dENsYXNzUmVmPjwvc2FtbDJwOlJlcXVlc3RlZEF1dGhuQ29udGV4dD48L3NhbWxwOkF1dGhuUmVxdWVzdD4%253D%26RelayState%3Dc095a648-2913-4966-8e4d-fa1c2d9d10d6) (key + password, for SEVIRI) are required. They can
+be executed via terminal:
+
+`python3 download_<OBS>.py <Case> <user/key> <password/token>`
 
 These files perform the following tasks:
 
@@ -183,7 +185,7 @@ These files perform the following tasks:
 ## scripts/utils/PostProccess_OPERA\_\<var_verif\>.py
 
 OPERA raw files have been downloaded manually. They are located in the
-ATOS directory: /perm/esp0754/databases/. These files are represented in
+ATOS directory: /perm/esp0754/databases/OPERA or /scratch/esp0754/auto_obs_db/OPERA/raw. These files are represented in
 a given projection. A two-dimensional grid building procedure has been
 carried out. Therefore, the PostProccess_OPERA\_\<var_verif\> scripts:
 
@@ -193,7 +195,9 @@ carried out. Therefore, the PostProccess_OPERA\_\<var_verif\> scripts:
 
 3.  Save the values in netCDF format.
 
-They can be executed via terminal: `python3 PostProccess_OPERA_<var_verif>.py <path_OPERA_raw> <Case>`
+They can be executed via terminal:
+
+`python3 PostProccess_OPERA_<var_verif>.py <path_OPERA_raw> <Case>`
 
 ## using existing observations
 
@@ -201,7 +205,7 @@ Another possibility is to use the observations that have been previously downloa
 
 # Run spatial verification
 
-The main.py file launches the spatial verification scripts developed in the tool. A complete verification exercise consists of 4 main and 2 optional steps. All steps are detailed below. An example of use can be found [here](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#example-usage).
+The main.py file launches the spatial verification scripts developed in the tool. A complete verification exercise consists of 4 [main](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#main-scripts) and 2 [optional](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#helpful-scripts) steps. All steps are detailed below. An example of use can be found [here](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#example-usage).
 
 ## Main scripts
 
@@ -213,11 +217,11 @@ successfully, successive programs cannot be used.
 
 1.  Storage of observations in the appropriate directory. This can be done in two ways: i) download observations using the [download](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsdownloadsdownload_obspy) or [processing](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsutilspostproccess_opera_var_verifpy) scripts; ii) the link_obs.py script creates the links to the [previously downloaded observational files](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsutilspostproccess_opera_var_verifpy) in the appropriate folder. This way is executed with the `--link_obs` argument of main.py.
 
-2.  The regrid.py script links the simulations of an experiment to the directory (created at initial step) and performs a linear interpolation of the data to the grid of the observations to be verified. Additionally, a map with the experiment data in its original grid is generated. This plot allows to check that the variable selected in the experiment is the correct one. This step is executed with the `--run_regrid` argument of main.py.
+2.  The regrid.py script links the simulations of an experiment to the directory (created at initial step) and performs a linear interpolation of the data to the grid of the observations to be verified. Additionally, a plot with the experiment data in its original grid is generated. This plot allows to check that the variable selected in the experiment is the correct one. This step is executed with the `--run_regrid` argument of main.py.
 
-3.  The verification.py script gets the arrays of observations and regridded experiments (generated in the previous step), crops a common verification domain and computes the FSS and SAL metrics using the [pysteps](https://github.com/pySTEPS/pysteps) module. Results are saved in several plots splitted by initializations. Additionally, plots with the FSS and SAL verification for each time step are generated. The original [SAL](https://github.com/pySTEPS/pysteps/blob/master/pysteps/verification/salscores.py) has been [modified](https://github.com/DEODE-NWP/deode_spatial_verif/blob/main/scripts/libs/customSAL.py) and a new object detection figure is now generated. In addition, object detection is further configurable (see [\"vars\": \<var_verif\>: \"SAL\": \"tstorm_kwargs\"](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#observation-config-file-config_obs_dbyaml) from the observations configuration file). Default values for detection objects are shown in [Appendix](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#appendix). This step is executed with the `--run_verif` argument of main.py.
+3.  The verification.py script gets the arrays of observations and regridded experiments (generated in the previous step), crops a common verification domain and computes the FSS and SAL metrics using the [pysteps](https://github.com/pySTEPS/pysteps) module. Results are saved in several plots splitted by initializations. Additionally, plots with the FSS and SAL verification for each time step are generated. The [original SAL](https://github.com/pySTEPS/pysteps/blob/master/pysteps/verification/salscores.py) has been [modified](https://github.com/DEODE-NWP/deode_spatial_verif/blob/main/scripts/libs/customSAL.py) and a new object detection figure is now generated. In addition, object detection is further configurable (see [\"vars\": \<var_verif\>: \"SAL\": \"tstorm_kwargs\"](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#observation-config-file-config_obs_dbyaml)). Default values for detection objects are shown in [Appendix](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#appendix). This step is executed with the `--run_verif` argument of main.py.
 
-4.  Finally, the tool also allows a comparison between two experiments launched for the same case study. The compExps_stats.py and compExps_maps.py scripts generate summary plots that allow comparison of the verifications conducted in the previous step for the low and high spatial resolution experiments. This comparison is performed on the timesteps verified in both experiments (initializations and lead times).
+4.  Finally, the tool also allows a comparison between two experiments launched for the same case study. The compExps_stats.py and compExps_maps.py scripts generate summary plots that allow comparison of the verifications conducted in the previous step. This comparison is performed on the timesteps verified in both experiments (initializations and lead times). This step is executed with the `--run_comparison` argument of main.py.
 
     1.  The comExps_metrics.py script generates the mean FSS comparison, the FSS distributions for each threshold and scale, the SAL scatter-plot of both experiments and the SAL distributions.
 
@@ -237,23 +241,26 @@ the main scripts.
 Suppose we have a case study called Spain_202205 for which two experiments have been run at different spatial resolution: AIB_46h1_de2 (2.5 km) and VAL500m_46h1_de2 (500 m). We want to compare whether there is an added value in high resolution. To this end:
 
 -   Full spatial verification of the high resolution experiment:
-python3 main.py --case Spain_202205 --exp VAL500m_46h1_de2 --link_obs --run_regrid --run_plot_regrid --run_verif --run_panels
+
+`python3 main.py --case Spain_202205 --exp VAL500m_46h1_de2 --link_obs --run_regrid --run_plot_regrid --run_verif --run_panels`
 
 -   Full spatial verification of the reference experiment:
-python3 main.py --case Spain_202205 --exp AIB_46h1_de2 --run_regrid --run_plot_regrid --run_verif --run_panels
+
+`python3 main.py --case Spain_202205 --exp AIB_46h1_de2 --run_regrid --run_plot_regrid --run_verif --run_panels`
 
 -   Comparison between experiments:
-python3 main.py --case Spain_202205 --exp VAL500m_46h1_de2 --exp_ref AIB_46h1_de2 --run_comparison
+
+`python3 main.py --case Spain_202205 --exp VAL500m_46h1_de2 --exp_ref AIB_46h1_de2 --run_comparison`
 
 # Integration into Deode-Workflow
 
 We are working on the integration of the tool within the [Deode-Workflow](https://github.com/destination-earth-digital-twins/Deode-Workflow) (DW) to automate the creation of the [configuration files](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#configs) needed to run a verification exercise with this tool. For this, the `--config_file` argument has been implemented. This argument allows to run a verification exercise directly from the DW configuration file, without the need to create the case study and the experiment previously, e.g.:
 
-python3 main.py --config_file /home/snh02/PARIS_RDP/Deode-Prototype/cy46h1_harmonie_arome_paris_200m_warm.toml --link_obs --run_regrid --run_plot_regrid --run_verif --run_panels
+`python3 main.py --config_file <DW_config_file.toml> --link_obs --run_regrid --run_plot_regrid --run_verif --run_panels`
 
-Another possibility is to run a verification exercise directly from DW, e.g.:
+Another possibility is to run a verification exercise directly from DW using the tool as a plugin, e.g.:
 
-deode case ?deode/data/config_files/configurations/cy46h1_harmonie_arome /home/esp0754/config_files_deode/storm_southSP_20240903.toml /home/esp0754/deode_plugins/verif_plugin.toml -o storm_southSP_20240903_verif.toml --start-suite
+`deode case ?deode/data/config_files/configurations/cy46h1_harmonie_arome <modifications.toml> <path/to/deode_plugin>verif_plugin.toml -o <output_verif.toml> --start-suite`
 
 # Appendix
 
@@ -264,12 +271,3 @@ Default values for SAL methodology following the pysteps module.
 | 1/15 | 0.95 |        None      | f·R<sub>q</sub> | f·R<sub>q</sub> + 1·10<sup>-5</sup> | 1·10<sup>-5</sup> | f·R<sub>q</sub> |
 
 where R<sub>q</sub> is the value corresponding to q-quartile from input.
-
-# References
-
-Wernli, H., Paulat, M., Hagen, M., & Frei, C. (2008). SAL---A novel
-quality measure for the verification of quantitative precipitation
-forecasts. *Monthly Weather Review*, *136*(11), 4470-4487.
-
-Gilleland, E., Ahijevych, D., & Ebert, B. (2009). Spatial forecast
-verification methods intercomparison. *Wea. Forecasting*.
