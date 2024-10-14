@@ -20,7 +20,7 @@ def main(obs, case, exp):
     print("INFO: RUNNING REGRID EXPERIMENT")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
-    pattern_to_find = f"*{var_verif}_{obs_db}grid*.nc"
+    pattern_to_find = f"*{var_verif}_{obs_db}grid_{case}*.nc"
 
     # observation database info
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')

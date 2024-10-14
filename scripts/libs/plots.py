@@ -86,23 +86,36 @@ def plot_verif_domain_in_axis(ax, verif_domain, lat, lon, color = 'black', linew
     ax = plot_domain_in_axis(ax, lat_crop, lon_crop, color, linewidth)
     return ax
     
-def PlotFSSInAxis(ax, data, cmap = 'Blues', title = '', xLabel = '', yLabel = ''):
-    sns.heatmap(data, cmap = cmap, annot = True, linewidths = .5, ax = ax, cbar = False)
-    ax.set_xlabel(xLabel, fontweight = "bold", fontsize = 8)
-    ax.set_ylabel(yLabel, fontweight = "bold", fontsize = 8)
-    ax.set_title(title, loc = 'left', fontsize = 8)
-    ax.tick_params(axis='both', labelsize=8)
+def plot_fss_scores(ax, data, cmap="RdYlGn", title="", x_label="", y_label=""):
+    sns.heatmap(
+        data,
+        cmap=cmap,
+        annot=True,
+        fmt=".2f",
+        linewidths=.5,
+        ax=ax,
+        cbar=False,
+        vmin=0.0,
+        vmax=1.0
+    )
+    ax.set_xlabel(x_label, fontweight="bold", fontsize=8)
+    if y_label != "":
+        ax.set_ylabel(y_label, fontweight="bold", fontsize=8)
+    ax.set_title(title, loc="left", fontsize=8)
+    ax.tick_params(axis="both", labelsize=8)
+    return ax
 
-def PlotViolinInAxis(ax, data, title = '', xLabel = '', yLabel = '', yLim = [0, 1]):
-    sns.violinplot(data=data, palette="pastel", cut=0, linewidth=2, ax = ax)
-    ax.set_ylim(yLim)
-    ax.set_ylabel(yLabel, fontweight="bold",fontsize = 8)
+def plot_violin(ax, data, title="", x_label="", y_label="", y_lim=[0, 1]):
+    sns.violinplot(data=data, palette="pastel", cut=0, linewidth=2, ax=ax)
+    ax.set_ylim(y_lim)
+    ax.set_ylabel(y_label, fontweight="bold", fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
-    if xLabel != '':
-        ax.set_xlabel(xLabel, fontweight="bold",fontsize = 8)
-    sns.despine(left=True, bottom=True)
-    if title != '':
-        ax.set_title(title, loc='center', fontsize=8)#, pad=15)
+    if x_label != "":
+        ax.set_xlabel(x_label, fontweight="bold", fontsize=8)
+    # sns.despine(left=True, bottom=True)
+    if title != "":
+        ax.set_title(title, loc='center', fontsize=8)
+    return ax
 
 def SetColorToLocationValue(location, ranges, colors):
     for idx, interval in enumerate(ranges):
@@ -111,7 +124,10 @@ def SetColorToLocationValue(location, ranges, colors):
             color = colors[idx]
     return color
         
-def PlotSALinAxis(ax, structures, amplitudes, locations, ranges = rangesSAL, colors = colorsSAL, title = '', detect_parms = {}, plotLegend = True):
+def plot_sal(
+        ax, structures, amplitudes, locations, ranges=rangesSAL,
+        colors=colorsSAL, title="", detect_params={}, plot_legend=True
+    ):
     try:
         colorsLocation = [SetColorToLocationValue(locValue, ranges, colors) for locValue in locations]
     except:
@@ -138,18 +154,27 @@ def PlotSALinAxis(ax, structures, amplitudes, locations, ranges = rangesSAL, col
     legend_handles = [Line2D([], [], marker = '.', color = color, linestyle = 'None') for color in colors]
     legend_labels = [f'[{vmin}, {vmax})' for vmin, vmax in ranges]
     legend_labels[-1] = f'= {ranges[-1][0]}'
-    if plotLegend == True:
-        ax.legend(handles = legend_handles, labels=legend_labels, bbox_to_anchor= (1.0, 0.5), loc= "center left", title='Location (L)', title_fontsize = 8, fontsize=8)
+    if plot_legend == True:
+        ax.legend(
+            handles=legend_handles,
+            labels=legend_labels,
+            bbox_to_anchor=(1.0, 0.5),
+            loc="center left",
+            title="Location (L)",
+            title_fontsize = 8,
+            fontsize=8
+        )
 
-    if detect_parms != {}:
-        text = '\n'.join([f'{k}: {v}' for k,v in detect_parms.items()])
+    if detect_params != {}:
+        text = '\n'.join([f'{k}: {v}' for k,v in detect_params.items()])
         ax.text(1.05, 0.15, text, va='center', ha='left', fontsize=6, transform=ax.transAxes)
 
     ax.set_title(title, loc='left', fontsize=8)
     ax.set_xlabel('Structure (S)', fontsize=8)
     ax.set_ylabel('Amplitude (A)', fontsize=8)
     ax.set_xticks(np.arange(-2, 2.5, 0.5))
-    ax.tick_params(axis='both', labelsize=8, direction = 'in')
+    ax.tick_params(axis='both', labelsize=8, direction="in")
+    return ax
 
 def plot_detected_objects(observation_objects, prediction_objects, cmap = None, norm = None):
     maxRows = max(len(observation_objects), len(prediction_objects))

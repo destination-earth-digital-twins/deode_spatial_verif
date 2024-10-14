@@ -15,7 +15,7 @@ from times import set_lead_times
 from domains import set_domain_verif, CropDomainsFromBounds
 from customSAL import SAL, _sal_detect_objects
 from dicts import get_grid_function, get_data_function, colormaps
-from plots import PlotMapInAxis, PlotFSSInAxis, PlotSALinAxis, plot_detected_objects, PlotViolinInAxis
+from plots import PlotMapInAxis, plot_fss_scores, plot_sal, plot_detected_objects, plot_violin
 
 offset = {'bt': 0}
 fss = verification.get_method("FSS")
@@ -193,14 +193,14 @@ def main(obs, case, exp):
     
                 # plot FSS at each lead time
                 fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-                PlotFSSInAxis(
-                    ax, 
-                    dictFSS[str(lead_time).zfill(2)].round(2), 
-                    title = formatter.format_string(
+                plot_fss_scores(
+                    ax=ax, 
+                    data=dictFSS[str(lead_time).zfill(2)], 
+                    title=formatter.format_string(
                         "title_fss", init_time=init_time, lead_time=lead_time.item()
                     ),
-                    xLabel = 'Scale', 
-                    yLabel = 'Threshold'
+                    x_label = 'Scale',
+                    y_label = 'Threshold'
                 )
                 fig.savefig(
                     formatter.format_string(
@@ -262,21 +262,27 @@ def main(obs, case, exp):
                 if len(dfSALrow.dropna()) > 0:
                     with sns.axes_style('darkgrid'):
                         fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-                        PlotSALinAxis(
-                            ax, 
-                            dfSAL.loc[str(lead_time).zfill(2), 'Structure'], 
-                            dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], 
-                            dfSAL.loc[str(lead_time).zfill(2), 'Location'], 
-                            title = formatter.format_string(
+                        _ = plot_sal(
+                            ax=ax, 
+                            structures=dfSAL.loc[str(lead_time).zfill(2), 'Structure'], 
+                            amplitudes=dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], 
+                            locations=dfSAL.loc[str(lead_time).zfill(2), 'Location'], 
+                            title=formatter.format_string(
                                 "title_sal", init_time=init_time, lead_time=lead_time.item()
-                            )
+                            ),
+                            detect_params={
+                                "f": thr_factor,
+                                "q": thr_quantile,
+                                "minsize": detect_params["minsize"],
+                                "mindis": detect_params["mindis"]
+                            }
                         )
                         fig.savefig(
                             figname_sal, 
                             dpi=600, 
                             bbox_inches='tight', 
                             pad_inches = 0.05
-                        )   
+                        )
                         plt.close()
                 elif os.path.isfile(figname_sal):
                     print(f'no objects detected for {init_time}+{str(lead_time).zfill(2)}. Removing the previous file for clarity')
@@ -299,14 +305,14 @@ def main(obs, case, exp):
                 columns = dictFSS[tuple(dictFSS.keys())[0]].columns
             )
             fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-            PlotFSSInAxis(
-                ax, 
-                dfFSS_mean.round(2), 
-                title = formatter.format_string(
-                    "title_fss_period", init_time=init_time, lead_time=lead_times
+            plot_fss_scores(
+                ax=ax, 
+                data=dfFSS_mean, 
+                title=formatter.format_string(
+                    "title_fss_period", init_time=init_time, lead_time=list(lead_times)
                 ),
-                xLabel = 'Scale', 
-                yLabel = 'Threshold'
+                x_label = 'Scale', 
+                y_label = 'Threshold'
             )
             fig.savefig(
                 formatter.format_string(
@@ -320,85 +326,26 @@ def main(obs, case, exp):
             
             with sns.axes_style('darkgrid'):
                 fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
-                PlotSALinAxis(
-                    ax, 
-                    dfSAL.dropna()['Structure'].values, 
-                    dfSAL.dropna()['Amplitude'].values, 
-                    dfSAL.dropna()['Location'].values, 
-                    title = formatter.format_string(
-                        "title_sal_period", init_time=init_time, lead_time=lead_times
-                    )
+                _ = plot_sal(
+                    ax=ax, 
+                    structures=dfSAL.dropna()['Structure'].values, 
+                    amplitudes=dfSAL.dropna()['Amplitude'].values, 
+                    locations=dfSAL.dropna()['Location'].values, 
+                    title=formatter.format_string(
+                        "title_sal_period", init_time=init_time, lead_time=list(lead_times)
+                    ),
+                    detect_params={
+                        "f": thr_factor,
+                        "q": thr_quantile,
+                        "minsize": detect_params["minsize"],
+                        "mindis": detect_params["mindis"]
+                    }
                 )
                 fig.savefig(
                     formatter.format_string(
                         "plot_sal_init", init_time=init_time
                     ),
                     dpi = 600, 
-                    bbox_inches = 'tight', 
-                    pad_inches = 0.05
-                )
-                plt.close()
-    
-            # violin plot FSS
-            with sns.axes_style('whitegrid'):
-                fig = plt.figure(figsize=(14 / 2.54, 6.0 * len(thresh) / 2.54), clear = True)
-                for iterator, row in enumerate(fss_nameRows):
-                    fssValuesFixedThres = {}
-                    for column in fss_nameCols:
-                        fssValuesFixedThres[column] = []
-                        for lead_time in dictFSS.keys():
-                            fssValuesFixedThres[column].append(dictFSS[lead_time].loc[row, column])
-                    df = pd.DataFrame(fssValuesFixedThres)
-                    ax = fig.add_subplot(len(thresh), 1, iterator + 1)
-                    if iterator == 0:
-                        PlotViolinInAxis(
-                            ax, 
-                            df, 
-                            title = formatter.format_string(
-                                "title_fss_dist", init_time=init_time
-                            ), 
-                            yLabel = f'FSS {row}'
-                        )
-                    elif iterator == (len(thresh) - 1):
-                        PlotViolinInAxis(
-                            ax, 
-                            df, 
-                            xLabel = f'Scale', 
-                            yLabel = f'FSS {row}'
-                        )
-                    else:
-                        PlotViolinInAxis(
-                            ax, 
-                            df, 
-                            yLabel = f'FSS {row}'
-                        )
-                fig.savefig(
-                    formatter.format_string(
-                        "plot_fss_dist", init_time=init_time
-                    ),
-                    dpi = 300, 
-                    bbox_inches = 'tight', 
-                    pad_inches = 0.05
-                )
-                plt.close()
-            
-            # violin plot SAL
-            with sns.axes_style('whitegrid'):
-                fig, ax = plt.subplots(figsize=(14. / 2.54, 6.0 / 2.54), clear = True)
-                PlotViolinInAxis(
-                    ax, 
-                    dfSAL, 
-                    title = formatter.format_string(
-                        "title_sal_dist", init_time=init_time
-                    ), 
-                    yLabel = 'SAL', 
-                    yLim = [-2.1, 2.1]
-                )
-                fig.savefig(
-                    formatter.format_string(
-                        "plot_sal_dist", init_time=init_time
-                    ),
-                    dpi = 300, 
                     bbox_inches = 'tight', 
                     pad_inches = 0.05
                 )

@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import sys
-sys.path.append('scripts/libs/')
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -11,8 +7,10 @@ from scipy.stats import wilcoxon
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.lines import Line2D
+
+sys.path.append('scripts/libs/')
 from LoadWriteData import LoadConfigFileFromYaml, LoadPickle
-from plots import PlotFSSInAxis, PlotSALinAxis, PlotViolinInAxis
+from plots import plot_fss_scores, plot_sal, plot_violin
 
 def sorted_list_files(string):
     list_files = glob(string)
@@ -25,6 +23,7 @@ def main(obs, case, exps):
 
     # Experiments to compare between
     expLowRes, expHighRes = exps.split('-VS-')
+    model_name = {}
     
     # Load results for FSS and SAL
     fss, sal = {}, {}
@@ -32,8 +31,9 @@ def main(obs, case, exps):
         for exp in (expLowRes, expHighRes):
             config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
             dictionary[exp] = {}
+            model_name[exp] = config_exp['model']['name']
             for init_time in config_exp['inits'].keys():
-                file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{config_exp['model']['name'].replace(' ', '').replace('.', '-')}_{exp}_{obs}_{init_time}.pkl"
+                file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{model_name[exp].replace(' ', '').replace('.', '-')}_{exp}_{obs}_{init_time}.pkl"
                 dictionary[exp][init_time] = LoadPickle(file_pickl)
 
     # common inits & lead times from FSS pickles
@@ -51,20 +51,38 @@ def main(obs, case, exps):
 
     # figure FSS mean
     fig = plt.figure(figsize = (19. / 2.54, 9. / 2.54), clear = True)
-    for iterator, exp in zip(range(2), (expLowRes, expHighRes)):
+    for iterator, exp, label in zip(range(2), (expLowRes, expHighRes), ("Threshold", "")):
         fss_scores = []
         for init_time in common_inits:
             for lead_time in common_lead_times[init_time]:
                 fss_scores.append(fss[exp][init_time][lead_time].values.copy())
         ax = fig.add_subplot(1, 2, iterator + 1)
-        PlotFSSInAxis(ax, pd.DataFrame(np.nanmean(fss_scores, axis = 0).round(2), columns = namecols_fss, index = namerows_fss), title = f'FSS plot | {exp} | {obs}', xLabel = 'Scale', yLabel = 'Threshold')
-    fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        ax = plot_fss_scores(
+            ax=ax,
+            data=pd.DataFrame(
+                np.nanmean(fss_scores, axis=0),
+                columns=namecols_fss,
+                index=namerows_fss
+            ),
+            title=f'{model_name[exp]} [exp: {exp}]',
+            x_label="Scale",
+            y_label=label
+        )
+        if iterator > 0:
+            ax.tick_params(axis = 'y', length = 0.0, labelleft = False)
+    fig.suptitle(f"FSS plot | mean values | OBS: {obs}", fontsize=8)
+    fig.savefig(
+        f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exps.replace('-VS-', '_vs_')}.png",
+        dpi=600,
+        bbox_inches="tight",
+        pad_inches=0.05
+    )
     plt.close()
     
     # figure FSS distribution
     with sns.axes_style('whitegrid'):
         fig = plt.figure(figsize=(19.0 / 2.54, 14.0 / 2.54), clear = True)
-        fig.subplots_adjust(wspace = 0.45, hspace = 0.3)
+        # fig.subplots_adjust(wspace = 0.45, hspace = 0.3)
         for iterator_row, namerow in enumerate(namerows_fss.values):
             for iterator_col, namecol in enumerate(namecols_fss.values):
                 fss_exps_fixed_thresh_scale = {}
@@ -80,15 +98,17 @@ def main(obs, case, exps):
                 fss_comp_exps.rename(columns = {f'{namecol}_x': expLowRes, f'{namecol}_y': expHighRes}, inplace = True)
                 
                 ax = fig.add_subplot(len(namerows_fss), len(namecols_fss), iterator_row * len(namecols_fss) + iterator_col + 1)
-                if ((iterator_col == 0) & (iterator_row == (len(namerows_fss) - 1))):
-                    PlotViolinInAxis(ax, fss_comp_exps, xLabel = namecol, yLabel = namerow)
-                elif iterator_col == 0:
-                    PlotViolinInAxis(ax, fss_comp_exps, yLabel = namerow)
-                elif iterator_row == (len(namerows_fss) - 1):
-                    PlotViolinInAxis(ax, fss_comp_exps, xLabel = namecol)
-                else:
-                    PlotViolinInAxis(ax, fss_comp_exps)
                 ax.set_yticks(np.arange(0.0, 1.25, 0.25))
+                if ((iterator_col == 0) & (iterator_row == (len(namerows_fss) - 1))):
+                    ax = plot_violin(ax, fss_comp_exps, x_label = namecol, y_label = namerow)
+                elif iterator_col == 0:
+                    ax = plot_violin(ax, fss_comp_exps, y_label = namerow)
+                elif iterator_row == (len(namerows_fss) - 1):
+                    ax = plot_violin(ax, fss_comp_exps, x_label = namecol)
+                    ax.set_yticklabels([])
+                else:
+                    ax = plot_violin(ax, fss_comp_exps)
+                    ax.set_yticklabels([])
                 ax.tick_params(axis = 'x', length = 0.0, labelbottom = False)
                 # if two data series are (not) statisticaly different --> green (red) contour
                 try:
@@ -103,13 +123,12 @@ def main(obs, case, exps):
                                 ax.collections[index].set_edgecolor('tab:green')
                             except IndexError:
                                 pass
-                    else:
-                         for index in (0, 1):
-                            try:
-                                ax.collections[index].set_edgecolor('tab:red')
-                            except IndexError:
-                                pass                   
-        fig.suptitle(f'FSS distributions | {expLowRes} (left) - {expHighRes} (right) | {obs}', fontsize = 10)
+        fig.suptitle(
+            f'FSS distributions | OBS: {obs}\n{expLowRes} (left) - {expHighRes} (right)',
+            fontsize=8
+        )
+        fig.supxlabel("Scales", fontsize=8, fontweight="bold")
+        fig.supylabel("Thresholds", fontsize=8, fontweight="bold")
         fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSdist_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close()
     
@@ -127,52 +146,17 @@ def main(obs, case, exps):
             else:
                 bool_legend = False
                 dict_params = {}
-            PlotSALinAxis(ax, sal_all_lead_times.dropna()['Structure'].values, sal_all_lead_times.dropna()['Amplitude'].values, sal_all_lead_times.dropna()['Location'].values, title = f'SAL plot | {exp} | {obs}', detect_parms = dict_params, plotLegend = bool_legend)
+            _ = plot_sal(
+                ax=ax,
+                structures=sal_all_lead_times.dropna()['Structure'].values,
+                amplitudes=sal_all_lead_times.dropna()['Amplitude'].values,
+                locations=sal_all_lead_times.dropna()['Location'].values,
+                title=f'{model_name[exp]} [exp: {exp}]',
+                detect_params=dict_params,
+                plot_legend=bool_legend
+            )
+        fig.suptitle(f"SAL plot | OBS: {obs}", fontsize=8)
         fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALall_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
-        plt.close()
-    
-    # figure SAL distribution
-    with sns.axes_style('whitegrid'):
-        fig = plt.figure(figsize=(14 / 2.54, 18.0 / 2.54), clear = True)
-        for iterator, namecol in enumerate(['Structure', 'Amplitude', 'Location']):
-            sal_exps_fixed_param = {}
-            for exp in (expLowRes, expHighRes):
-                sal_exps_fixed_param[exp] = pd.DataFrame()
-                for init_time in common_inits:
-                    common_index = [f'{init_time}+{lead_time}' for lead_time in common_lead_times[init_time]]
-                    sal_exp_fixed_param_init = pd.DataFrame(sal[exp][init_time]['values'].loc[common_lead_times[init_time], namecol].values.copy(), columns = [exp], index = common_index)
-                    sal_exps_fixed_param[exp] = pd.concat([sal_exps_fixed_param[exp].copy(), sal_exp_fixed_param_init.copy()])
-            sal_comp_exps = pd.merge(sal_exps_fixed_param[expLowRes], sal_exps_fixed_param[expHighRes], left_index = True, right_index = True) # double check with common inits and lead times
-            
-            ax = fig.add_subplot(3, 1, iterator + 1)
-            if iterator == 0:
-                PlotViolinInAxis(ax, sal_comp_exps, title = f'SAL distributions | {" - ".join(sal_comp_exps.columns.values)} | {obs}', xLabel = '', yLabel = namecol, yLim = [-2, 2])
-                ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-            elif namecol == 'Location':
-                PlotViolinInAxis(ax, sal_comp_exps, yLabel = namecol, yLim = [0, 2])
-            else:
-                PlotViolinInAxis(ax, sal_comp_exps, yLabel = namecol, yLim = [-2, 2])
-                ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-            # if two data series are (not) statisticaly different --> green (red) contour
-            try:
-                pValue = wilcoxon(sal_comp_exps.dropna()[expLowRes].values, sal_comp_exps.dropna()[expHighRes].values)[1] # pValue only allows two data series
-            except ValueError:
-                pValue = None
-            if pValue is not None:
-                print(f'{namecol} pValue: {pValue}')
-                if pValue < 0.05:
-                    for index in (0, 1):
-                        try:
-                            ax.collections[index].set_edgecolor('tab:green')
-                        except IndexError:
-                            pass
-                else:
-                     for index in (0, 1):
-                        try:
-                            ax.collections[index].set_edgecolor('tab:red')
-                        except IndexError:
-                            pass    
-        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALdist_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
         plt.close()
     return 0
 
