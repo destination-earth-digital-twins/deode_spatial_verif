@@ -1,12 +1,14 @@
 'path':
     '/ec/res4/scratch/esp0754/auto_obs_db/OPERA'
 'format':
-    'filename': 'T_PASH22_C_EUOC_%Y%m%d%H%M%S.nc'
-    'fileformat': 'netCDF'
+    'filename':
+        'refl': 'ODC.REF_%Y%m%d%H%M.h5'
+        'rain': 'T_PASH22_C_EUOC_%Y%m%d%H%M%S.hdf'
+    'fileformat': 'HDF5'
 'vars':
     'refl':
         'var': 'dataset1:data1:data'
-        'postprocess': True
+        'postprocess': False
         'res': '2 km'
         'description': 'Max. Reflectivity'
         'units': 'dBZ'
@@ -19,7 +21,7 @@
             'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 50, "minmax": 41, "mindis": 10}
     'rain':
         'var': 'dataset1:data1:data'
-        'postprocess': True
+        'postprocess': False
         'res': '2 km'
         'description': '1-hour Accumulated Rainfall'
         'units': 'mm'

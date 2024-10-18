@@ -1,7 +1,8 @@
 'path':
     '/ec/res4/scratch/esp0754/auto_obs_db/SEVIRI'
 'format':
-    'filename': 'HRSEVIRI_%Y%m%dT%H%MZ_BT.nc'
+    'filename':
+        'bt': 'HRSEVIRI_%Y%m%dT%H%MZ_BT.nc'
     'fileformat': 'netCDF'
 'vars':
     'bt':

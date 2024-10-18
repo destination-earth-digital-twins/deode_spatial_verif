@@ -18,7 +18,7 @@ def main(obs, case):
         f"config/obs_db/config_{obs_db}.yaml"
     )
     obs_path = config_obs_db["path"]
-    obs_filename = config_obs_db["format"]["filename"]
+    obs_filename = config_obs_db["format"]["filename"][var_verif]
     print(
         f"INFO: Load config file for {obs_db} database: \n "
         + f"obs downloaded at: {obs_path}; file format: {obs_filename}"

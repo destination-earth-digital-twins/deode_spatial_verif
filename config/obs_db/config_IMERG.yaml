@@ -1,7 +1,8 @@
 'path':
     '/ec/res4/scratch/esp0754/auto_obs_db/IMERG'
 'format':
-    'filename': '3B-HHR-L.MS.MRG.3IMERG.%Y%m%d-%H%M%S.nc'
+    'filename':
+        'pcp': '3B-HHR-L.MS.MRG.3IMERG.%Y%m%d-%H%M%S.nc'
     'fileformat': 'netCDF'
 'vars':
     'pcp':

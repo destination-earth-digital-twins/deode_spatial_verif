@@ -1,11 +1,12 @@
 'path':
     '/path/to/downloaded/observations'
 'format':
-    'filename': ''
+    'filename':
+        '': ''
     'fileformat': ''
 'vars':
     '':
-        'var_raw': ''
+        'var': ''
         'postprocess': 
         'res': ''
 	'description': ''

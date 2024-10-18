@@ -35,7 +35,7 @@ def main(obs, case, exp):
 
     # observation database info
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
-    obs_filename = config_obs_db['format']['filename']
+    obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
     if config_obs_db['vars'][var_verif]['postprocess'] == True:
         obs_var_get = var_verif

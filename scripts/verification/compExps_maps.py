@@ -30,12 +30,12 @@ def main(obs, case, exps):
 
     # observation database info
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
-    obs_filename = config_obs_db['format']['filename']
+    obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
     if config_obs_db['vars'][var_verif]['postprocess'] == True:
         obs_var_get = var_verif
     else:
-        obs_var_get = config_obs_db['vars'][var_verif]['var_raw']
+        obs_var_get = config_obs_db['vars'][var_verif]['var']
     var_verif_description = config_obs_db['vars'][var_verif]['description']
     var_verif_units = config_obs_db['vars'][var_verif]['units']
     print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get}')
@@ -84,7 +84,8 @@ def main(obs, case, exps):
             valid_time = date_exp_ini + timedelta(hours = int(lead_time))
             valid_times.append(valid_time)
             obs_file = valid_time.strftime(f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-            obs_values, obs_lat, obs_lon = get_data_function[obs_fileformat](obs_file, [obs_var_get, 'lat', 'lon'])
+            obs_values = get_data_function[obs_fileformat](obs_file, obs_var_get)
+            obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
             values_databases[obs_db].append(obs_values.copy())
 
             expLowRes_file = formatter[expLowRes].format_string(

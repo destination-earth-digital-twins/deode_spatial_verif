@@ -22,15 +22,16 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
 -   format. Name and extension of the files to be used as observations for spatial verification. The format of the files may not match the originals. This is due to the necessity for some databases to be processed before use. For instance, SEVIRI provides irradiance values from channel 9. Since post-processing of the raw data is required to convert to brightness temperature, the raw data are processed and saved in netCDF format for simplicity.
 
-    -   **filename**. \[str\]. Name of the observation file with extension, if any. It must contain the required characters to indicate the date format used by datetime.
+    -   filename. Some databases have different file names for each product they offer. This is why we added a level for this parameter.
+        -   **\<var_verif\>**. \[str\]. Name of the observation file with extension, if any. It must contain the required characters to indicate the date format used by datetime.
 
-    -   **fileformat**. \[str\]. File format of the observation file. Possible values are: netCDF, Grib.
+    -   **fileformat**. \[str\]. File format of the observation file. Possible values are: netCDF, Grib, HDF5.
 
 -   vars. Information regarding the variable to be used for verification.
 
     -   **\<var_verif\>**. \[str\]. Variable name to be verified. Possible values are: pcp (precipitation), bt (brightness temperature), rain (rainfall), refl (maximum reflectivity).
 
-        -   **var_raw**. \[str\]. Variable name to get from the raw files.
+        -   **var**. \[str\]. Variable name to get from the raw files.
 
         -   **postprocess**. \[bool\]. Boolean value. It indicates whether the raw files of the observations have been processed or not. This control parameter is used to tell the verification process which variable to get: \'var\' or \<var_verif\>.
 
@@ -82,7 +83,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
     -   **filename**. \[str\]. Name of the experiment file with extension, if any. It must contain the required characters to indicate the date format used by datetime. The lead time must be indicated as "%L", with as many L's as digits.
 
-    -   **fileformat**. \[str\]. File format of the experiment file. Possible values are: netCDF, Grib.
+    -   **fileformat**. \[str\]. File format of the experiment file. Only tested with: Grib.
 
 -   inits. Initializations of the experiment to be used in the spatial verification.
 
@@ -182,23 +183,6 @@ These files perform the following tasks:
 
 4.  Save the information (variable name: bt) in netCDF format in the OBSERVATIONS/data_SEVIRI_bt/\<Case\>/ directory. The computed values correspond to the approximate instantaneous brightness temperature of the date.
 
-## scripts/utils/PostProccess_OPERA\_\<var_verif\>.py
-
-OPERA raw files have been downloaded manually. They are located in the
-ATOS directory: /perm/esp0754/databases/OPERA or /scratch/esp0754/auto_obs_db/OPERA/raw. These files are represented in
-a given projection. A two-dimensional grid building procedure has been
-carried out. Therefore, the PostProccess_OPERA\_\<var_verif\> scripts:
-
-1.  Get the variable to be verified.
-
-2.  Build the two-dimensional grid of OPERA radar.
-
-3.  Save the values in netCDF format.
-
-They can be executed via terminal:
-
-`python3 PostProccess_OPERA_<var_verif>.py <path_OPERA_raw> <Case>`
-
 ## using existing observations
 
 Another possibility is to use the observations that have been previously downloaded and adapted to the tool by following [the steps discussed above](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#before-start). For this, the parameter [\"path\": \<path\>](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#observation-config-file-config_obs_dbyaml) must be set to the path where the observations have been stored and [run the verification exercise](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#run-spatial-verification) with the `--link_obs` option specified.
@@ -260,7 +244,9 @@ We are working on the integration of the tool within the [Deode-Workflow](https:
 
 Another possibility is to run a verification exercise directly from DW using the tool as a plugin, e.g.:
 
-`deode case ?deode/data/config_files/configurations/cy46h1_harmonie_arome <modifications.toml> <path/to/deode_plugin>verif_plugin.toml -o <output_verif.toml> --start-suite`
+`deode case ?<list_modif_file> <path/to/deode_plugin>verif_plugin.toml -o <output_verif.toml> --start-suite`
+
+where `<list_modif_file>` can be e.g. deode/data/config_files/configurations/cy46h1_harmonie_arome.
 
 # Appendix
 

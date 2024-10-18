@@ -3,6 +3,7 @@ import numpy as np
 import pygrib
 import h5py
 import xarray as xr
+import pyproj
 import pickle
 
 def LoadConfigFileFromYaml(yamlFile):
@@ -106,6 +107,54 @@ def get_vars_from_grib(file_grib, vars):
 def get_lat_lon_from_grib(file_grib):
     lat, lon = get_vars_from_grib(file_grib, vars = ['lat', 'lon'])
     return lat.copy(), lon.copy()
+
+def get_vars_from_HDF5(filename, vars):
+    list_vars = check_is_typelist(vars)
+    hf = h5py.File(filename, 'r')
+    print(f'INFO:reading {filename}')
+    list_values = []
+    for path in list_vars:
+        groups, var = path.split(':')[:-1], path.split(':')[-1]
+        grp = hf.get(groups[0])
+        for group in groups[1:]:
+            grp = grp.get(group)
+        print(f'INFO:get {var} values')
+        values_raw = grp.get(var)[:].copy()
+        values_flip = np.flip(
+            np.where(values_raw == -8888000., 0.0, values_raw),
+            axis=0
+        )
+        list_values.append(values_flip)
+    hf.close()
+    if len(list_values) == 1:
+        return list_values[0]
+    else:
+        return list_values
+
+def get_lat_lon_from_HDF5(filename):
+    hf = h5py.File(filename, 'r')
+    print(f'INFO:reading {filename}')
+    # get projection params
+    where = hf.get('where')
+    projection = pyproj.Proj(where.attrs.get('projdef').decode())
+    ll_lat = where.attrs.get('LL_lat')
+    ll_lon = where.attrs.get('LL_lon')
+    ur_lat = where.attrs.get('UR_lat')
+    ur_lon = where.attrs.get('UR_lon')
+    res_x = where.attrs.get('xsize')
+    res_y = where.attrs.get('ysize')
+    hf.close()
+    # transform lat-lon coordinates to meters
+    ll_x, ll_y = projection(ll_lon, ll_lat)
+    ur_x, ur_y = projection(ur_lon, ur_lat)
+    # build grid in meters
+    xi = np.linspace(int(np.round(ll_x, 0)), int(np.round(ur_x, 0)), res_x)
+    yi = np.linspace(int(np.round(ll_y, 0)), int(np.round(ur_y, 0)), res_y)
+    x, y = np.meshgrid(xi, yi)
+    # reproject to lat-lon coordinates
+    print(f'INFO:get lat-lon coordinates')
+    lon2D, lat2D = projection(x, y, inverse=True)
+    return lat2D.copy(), lon2D.copy()
 
 def build_dataset(values, date, lat, lon, var_name, attrs_var = {}, attrs_nc = {}):
     attrs_var.update({'coordinates': 'time lat lon'})

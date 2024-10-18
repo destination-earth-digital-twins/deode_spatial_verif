@@ -24,12 +24,12 @@ def main(obs, case, exp):
 
     # observation database info
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
-    obs_filename = config_obs_db['format']['filename']
+    obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
     if config_obs_db['vars'][var_verif]['postprocess'] == True:
         obs_var_get = var_verif
     else:
-        obs_var_get = config_obs_db['vars'][var_verif]['var_raw']
+        obs_var_get = config_obs_db['vars'][var_verif]['var']
     var_verif_description = config_obs_db['vars'][var_verif]['description']
     var_verif_units = config_obs_db['vars'][var_verif]['units']
     print(f'INFO: Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get} ({var_verif_description}, in {var_verif_units})')

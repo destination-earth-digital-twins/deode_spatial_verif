@@ -7,7 +7,7 @@ import sys
 sys.path.append('scripts/libs/')
 from namingformatter import NamingFormatter
 from LoadWriteData import LoadConfigFileFromYaml
-from dicts import get_data_function, colormaps
+from dicts import get_data_function, get_grid_function, colormaps
 from times import set_lead_times, lead_time_replace
 from domains import set_domain_verif
 from plots import PlotMapInAxis, plot_verif_domain_in_axis
@@ -21,7 +21,7 @@ def main(obs, case, exp):
 
     # observation database info
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
-    obs_filename = config_obs_db['format']['filename']
+    obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
     if config_obs_db['vars'][var_verif]['postprocess'] == True:
         obs_var_get = var_verif
@@ -91,7 +91,8 @@ def main(obs, case, exp):
                         lead_time=lead_time.item()
                     )
                     if os.path.isfile(obs_file) and os.path.isfile(file_nwp):
-                        data_obs, lat_obs, lon_obs = get_data_function[obs_fileformat](obs_file, [obs_var_get, 'lat', 'lon'])
+                        data_obs = get_data_function[obs_fileformat](obs_file, obs_var_get)
+                        lat_obs, lon_obs = get_grid_function[obs_fileformat](obs_file)
                         data_nwp, lat_nwp, lon_nwp = get_data_function['netCDF'](file_nwp, [var_verif, 'lat', 'lon'])
             
                         # set verif domain
