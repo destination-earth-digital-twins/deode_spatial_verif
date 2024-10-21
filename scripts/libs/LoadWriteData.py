@@ -124,7 +124,8 @@ def get_vars_from_HDF5(filename, vars):
             np.where(values_raw == -8888000., 0.0, values_raw),
             axis=0
         )
-        list_values.append(values_flip)
+        values = np.where(values_flip == -9999000., np.nan, values_flip)
+        list_values.append(values)
     hf.close()
     if len(list_values) == 1:
         return list_values[0]
