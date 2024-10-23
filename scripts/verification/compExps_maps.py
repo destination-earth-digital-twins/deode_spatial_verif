@@ -226,7 +226,8 @@ def main(obs, case, exps):
             template="plot_gif"
         ).replace(expLowRes, exps).replace("-VS-", "_"),
         gif,
-        duration = 0.5
+        fps=2,
+        loop=0
     )
     return 0
 
