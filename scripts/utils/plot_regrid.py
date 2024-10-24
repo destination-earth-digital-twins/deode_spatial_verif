@@ -11,10 +11,10 @@ from dicts import get_data_function, get_grid_function, colormaps
 from times import set_lead_times, lead_time_replace
 from domains import set_domain_verif
 from plots import PlotMapInAxis, plot_verif_domain_in_axis
-from miscelanea import list_sorted_files
+from miscelanea import list_sorted_files, str2bool
 
 
-def main(obs, case, exp):
+def main(obs, case, exp, replace):
     print("INFO: RUNNING PLOT REGRID")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
@@ -50,6 +50,9 @@ def main(obs, case, exp):
     # naming formatter
     formatter = NamingFormatter(obs, case, exp)
 
+    # replace outputs bool
+    repl_outputs = str2bool(replace)
+
     # init times of nwp
     for init_time in config_exp['inits'].keys():
         date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
@@ -74,7 +77,7 @@ def main(obs, case, exp):
                 )
             )
         )
-        if len(figures_init_time) != len(lead_times):
+        if len(figures_init_time) != len(lead_times) or repl_outputs:
 
             # plot OBS vs Regrid exp at each timestep
             for lead_time in lead_times:
@@ -83,7 +86,7 @@ def main(obs, case, exp):
                     init_time=init_time,
                     lead_time=lead_time.item()
                 )
-                if not os.path.isfile(fig_name):
+                if not os.path.isfile(fig_name) or repl_outputs:
                     obs_file = datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
                     file_nwp = formatter.format_string(
                         "regrid",
@@ -158,4 +161,4 @@ def main(obs, case, exp):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

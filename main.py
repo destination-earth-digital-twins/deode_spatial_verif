@@ -49,6 +49,12 @@ def main():
         "--run_comparison", action="store_true",
         help="Launch comparison scripts"
     )
+    parser.add_argument(
+        "--replace_outputs", action="store_true", help=(
+            "The new outputs will replace those that may exist previously. "
+            "Only plot_regrid and verification tasks are affected."
+        )
+    )
 
     args = parser.parse_args()
 
@@ -77,6 +83,11 @@ def main():
         exp = args.exp
         case = args.case
 
+    if args.replace_outputs:
+        replace = "True"
+    else:
+        replace = "False"
+
     subprocess.run([
         "python3", "scripts/verification/set_environment.py",
         args.obs, case, exp
@@ -95,12 +106,12 @@ def main():
     if args.run_plot_regrid:
         subprocess.run([
             "python3", "scripts/utils/plot_regrid.py",
-            args.obs, case, exp
+            args.obs, case, exp, replace
         ])
     if args.run_verif:
         subprocess.run([
             "python3", "scripts/verification/verification.py",
-            args.obs, case, exp
+            args.obs, case, exp, replace
         ])
     if args.run_panels:
         subprocess.run([

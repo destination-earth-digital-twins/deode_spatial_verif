@@ -11,3 +11,6 @@ def check_is_empty_dir(pattern):
         return False
     else:
         return True
+
+def str2bool(v):
+    return v.lower() in ("yes", "true")

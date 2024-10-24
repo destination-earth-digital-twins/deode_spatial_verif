@@ -10,6 +10,7 @@ import sys
 
 sys.path.append('scripts/libs/')
 from namingformatter import NamingFormatter
+from miscelanea import str2bool
 from LoadWriteData import LoadConfigFileFromYaml, LoadPickle, SavePickle
 from times import set_lead_times
 from domains import set_domain_verif, CropDomainsFromBounds
@@ -28,7 +29,7 @@ def PixelToDistanceStr(nPixels, resolution):
     else:
         return f'{int(round(nPixels * value, 0))} {units}'
 
-def main(obs, case, exp):
+def main(obs, case, exp, replace):
     print("INFO: RUNNING SPATIAL VERIFICATION")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
@@ -63,6 +64,9 @@ def main(obs, case, exp):
 
     # naming formatter
     formatter = NamingFormatter(obs, case, exp)
+
+    # replace outputs bool
+    repl_outputs = str2bool(replace)
     
     # FSS & SAL params
     thresh = config_obs_db['vars'][var_verif]['FSS']['thresholds']
@@ -97,15 +101,23 @@ def main(obs, case, exp):
         file_pickle_fss = formatter.format_string(
             "pickle_fss", init_time=init_time
         )
+        file_pickle_sal = formatter.format_string(
+            "pickle_sal", init_time=init_time
+        )
+        if repl_outputs:
+            try:
+                os.remove(file_pickle_fss)
+                os.remove(file_pickle_sal)
+            except FileNotFoundError:
+                print(
+                    f"INFO: replace_outputs option enabled but verification "
+                    f"files not found for init: {init_time}"
+                )
         if os.path.isfile(file_pickle_fss):
             print(f"INFO: Verification scores found for init {init_time}")
             dictFSS = LoadPickle(file_pickle_fss)
             verified_lt = np.array([int(lt_str) for lt_str in dictFSS.keys()])
-            pickle_sal = LoadPickle(
-                formatter.format_string(
-                    "pickle_sal", init_time=init_time
-                )
-            )
+            pickle_sal = LoadPickle(file_pickle_sal)
             dfSAL = pickle_sal["values"].copy() # Final pandas.dataframe with SAL verification (columns) at each lead time (rows)
             detect_params_old = detect_params.copy()
             for key in detect_params_old.keys():
@@ -124,7 +136,7 @@ def main(obs, case, exp):
 
         lt_no_verif = lead_times[np.isin(lead_times, verified_lt) == False].copy()
         print(f"INFO: verifying {lt_no_verif} timesteps")
-                    
+        
         score = {} # this dict will be used to build pandas.dataframe and included them into dictFSS
         listFSS_fcst = []
         for lead_time in lt_no_verif:
@@ -370,4 +382,4 @@ def main(obs, case, exp):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
