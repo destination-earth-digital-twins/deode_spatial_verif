@@ -67,17 +67,9 @@ def main(obs, case, exp, replace):
             lead_times = lead_times[lead_times > 0].copy()
         else:
             pass
-        print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
 
-        # check if this init_time is completed
-        figures_init_time = list_sorted_files(
-            lead_time_replace(
-                formatter.format_string(
-                    "plot_regrid", init_time=init_time
-                )
-            )
-        )
-        if len(figures_init_time) != len(lead_times) or repl_outputs:
+        if len(lead_times) > 0:
+            print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
 
             # plot OBS vs Regrid exp at each timestep
             for lead_time in lead_times:
@@ -157,7 +149,7 @@ def main(obs, case, exp, replace):
                 else:
                     print(f"INFO: file {fig_name} already exists. Avoiding plot")
         else:
-            print(f"INFO: All plots generated for init: {init_time}. Avoiding plot")
+            print(f"INFO: Valid times outside the lead times availables for init: {init_time}. Avoiding plot")
     return 0
 
 if __name__ == '__main__':

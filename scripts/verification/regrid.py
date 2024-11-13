@@ -60,141 +60,141 @@ def main(obs, case, exp):
     
     # init times of nwp
     for init_time in config_exp['inits'].keys():
-        path_regrid_exp = f"SIMULATIONS/{exp}/data_regrid/{init_time}"
-        if check_is_empty_dir(os.path.join(path_regrid_exp, pattern_to_find)):
-            print(
-                f"INFO: Regridded files not found in {path_regrid_exp} "
-                + f"for {obs_db}. Setting lead times"
-            )
-            date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
-            
-            # set lead times from experiments
-            date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
-            date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
-            lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
-            if is_accum == True:
-                lead_times = lead_times[lead_times >= 1].copy() # TODO: accum_hours instead 1h
-            elif verif_at_0h == False:
-                lead_times = lead_times[lead_times > 0].copy()
-            else:
-                pass
-            print(f'INFO: Lead times from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1].item()).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
-            
-            # link simus to SIMULATIONS/
-            filesPath = exp_filepaths[config_exp['inits'][init_time]['path']].replace('%exp', exp)
-            exp_filename_no_lead = lead_time_replace(exp_filename)
-            exp_origin = os.path.join(
-                datetime.strftime(date_simus_ini, filesPath), 
-                exp_filename_no_lead.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*")
-            )
-            print(f"INFO: Link original files")
-            os.system(f'ln -s {exp_origin} SIMULATIONS/{exp}/data_orig/{init_time}/')
-            print(f"INFO: Linked files:")
-            os.system(f'ls -ltr SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_no_lead.replace("%Y", "*").replace("%m", "*").replace("%d", "*").replace("%H", "*").replace("%M", "*")}')
-    
-            # get lat, lon coordinates from observations and simus at, for example, initial lead time
-            obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-            exp_filename_t = lead_time_replace(exp_filename, lead_times[0].item())
-            simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
-            obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
-            simus_lat_orig, simus_lon_orig = get_grid_function[exp_fileformat](simus_file)
 
-            # crop data to avoid ram issues
-            obs_lat = CropDomainsFromBounds(obs_lat_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
-            obs_lon = CropDomainsFromBounds(obs_lon_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
-            simus_lat = CropDomainsFromBounds(simus_lat_orig, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
-            simus_lon = CropDomainsFromBounds(simus_lon_orig, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
-            print(f'INFO: Lat lon coordinates from {obs_db}: \n --- lat --- \n{obs_lat} \n --- lon --- \n{obs_lon}')
-            print(f'INFO: Lat lon coordinates from {exp}: \n --- lat --- \n{simus_lat} \n --- lon --- \n{simus_lon}')
-    
-            for lead_time in lead_times:
-                # get original simus
-                exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
-                if ((is_accum == True) & (lead_time > 1)): # TODO: accum_hours instead 1h
-                    # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
-                    exp_filename_dt = lead_time_replace(exp_filename, lead_time.item() - 1) # TODO: accum_hours instead 1h
-                    data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
-                    data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), exp_var_get)
-                    if isinstance(exp_var_get, list): # assume all variables have accumulated values
-                        data = []
-                        for values_t, values_dt in zip(data_t, data_dt):
-                            diff = values_t - values_dt
-                            data.append(np.where(diff < 0, 0., diff))
-                    else:
-                        diff = data_t - data_dt
-                        data = np.where(diff < 0, 0., diff)
-                else:
-                    data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
-                
-                # postprocessing?? and crop
-                if postprocess != 'None':
-                    data_raw_domain = postprocess_function[postprocess](data)
-                    data_fp = CropDomainsFromBounds(data_raw_domain, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
-                else:
-                    data_fp = CropDomainsFromBounds(data, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
-    
-                # plot original simus
-                valid_time = date_simus_ini + timedelta(hours = lead_time.item())
-                fig = plt.figure(0, figsize=(11. / 2.54, 11. / 2.54), clear = True)
-                ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
-                ax, cbar = PlotMapInAxis(
-                    ax = ax, 
-                    data = data_fp, 
-                    lat = simus_lat, 
-                    lon = simus_lon, 
-                    extent = case_domain,
-                    title = formatter.format_string(
-                        template="title_orig",
-                        valid_time=valid_time,
-                        init_time=init_time,
-                        lead_time=lead_time.item()
-                    ),
-                    cb_label = f'{var_verif_description} ({var_verif_units})', 
-                    left_grid_label = False, 
-                    right_grid_label = True, 
-                    cmap = colormaps[var_verif]['map'], 
-                    norm = colormaps[var_verif]['norm']
-                )
-                fig.savefig(
-                    formatter.format_string(
-                        "plot_orig", init_time=init_time, lead_time=lead_time.item()
-                    ),
-                    dpi=600,
-                    bbox_inches='tight',
-                    pad_inches=0.05
-                )
-                plt.close(0)
-                
-                # regridding simus
-                print(f'Regridding {init_time}+{str(lead_time).zfill(2)} time step from {exp} (original grid)')
-                regridded_data = griddata(
-                    (simus_lon.flatten(), simus_lat.flatten()),
-                    data_fp.flatten(),
-                    (obs_lon, obs_lat),
-                    method = 'linear'
-                )
-    
-                # write netCDF
-                ds = build_dataset(
-                    values=regridded_data, 
-                    date=date_simus_ini + timedelta(hours=lead_time.item()), 
-                    lat=obs_lat, 
-                    lon=obs_lon, 
-                    var_name=var_verif, 
-                    attrs_var={'units': var_verif_units, 'long_name': var_verif_description}
-                )
-                ds.to_netcdf(
-                    formatter.format_string(
-                        "regrid", init_time=init_time, lead_time=lead_time.item()
-                    ),
-                    encoding={'time': {'units': 'seconds since 1970-01-01'}}
-                )
-                print('... DONE')
+        date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
+        simus_lat = None
+        simus_lon = None
+
+        # set lead times from experiments
+        date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
+        date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
+        lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
+        if is_accum == True:
+            lead_times = lead_times[lead_times >= 1].copy() # TODO: accum_hours instead 1h
+        elif verif_at_0h == False:
+            lead_times = lead_times[lead_times > 0].copy()
         else:
-            print(
-                f"INFO: Regridded files found in {path_regrid_exp} " \
-                + f"for {obs_db}. Avoiding the regridding process."
-            )
+            pass
+
+        if len(lead_times) > 0:
+            print(f'INFO: Lead times from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1].item()).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
+
+            for lead_time in lead_times:
+                file_regrid = formatter.format_string(
+                    "regrid", init_time=init_time, lead_time=lead_time.item()
+                )
+                if not os.path.isfile(file_regrid):
+                    # link original simus to SIMULATIONS/
+                    files_orig_path = exp_filepaths[config_exp['inits'][init_time]['path']].replace('%exp', exp)
+                    exp_filename_t = lead_time_replace(exp_filename, lead_time.item())
+                    exp_origin = os.path.join(
+                        datetime.strftime(date_simus_ini, files_orig_path), 
+                        exp_filename_t
+                    )
+                    os.system(f'ln -s {exp_origin} SIMULATIONS/{exp}/data_orig/{init_time}/')
+
+                    # check lat-lon coordinates from original exps are already retrieved
+                    if simus_lat is None and simus_lon is None:
+                        obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
+                        simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
+                        obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
+                        simus_lat_orig, simus_lon_orig = get_grid_function[exp_fileformat](simus_file)
+
+                        # crop data to avoid ram issues
+                        obs_lat = CropDomainsFromBounds(obs_lat_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+                        obs_lon = CropDomainsFromBounds(obs_lon_orig, obs_lat_orig, obs_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+                        simus_lat = CropDomainsFromBounds(simus_lat_orig, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+                        simus_lon = CropDomainsFromBounds(simus_lon_orig, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+                        print(f'INFO: Lat lon coordinates from {obs_db}: \n --- lat --- \n{obs_lat} \n --- lon --- \n{obs_lon}')
+                        print(f'INFO: Lat lon coordinates from {exp}: \n --- lat --- \n{simus_lat} \n --- lon --- \n{simus_lon}')
+
+                    if ((is_accum == True) & (lead_time > 1)): # TODO: accum_hours instead 1h
+                        # link original simus to SIMULATIONS/
+                        exp_filename_dt = lead_time_replace(exp_filename, lead_time.item() - 1) # TODO: accum_hours instead 1h
+                        exp_origin_dt = os.path.join(
+                            datetime.strftime(date_simus_ini, files_orig_path), 
+                            exp_filename_dt
+                        )
+                        os.system(f'ln -s {exp_origin_dt} SIMULATIONS/{exp}/data_orig/{init_time}/')
+
+                        # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
+                        data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
+                        data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), exp_var_get)
+                        if isinstance(exp_var_get, list): # assume all variables have accumulated values
+                            data = []
+                            for values_t, values_dt in zip(data_t, data_dt):
+                                diff = values_t - values_dt
+                                data.append(np.where(diff < 0, 0., diff))
+                        else:
+                            diff = data_t - data_dt
+                            data = np.where(diff < 0, 0., diff)
+                    else:
+                        data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
+                    
+                    # postprocessing?? and crop
+                    if postprocess != 'None':
+                        data_raw_domain = postprocess_function[postprocess](data)
+                        data_fp = CropDomainsFromBounds(data_raw_domain, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+                    else:
+                        data_fp = CropDomainsFromBounds(data, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
+        
+                    # plot original simus
+                    valid_time = date_simus_ini + timedelta(hours = lead_time.item())
+                    fig = plt.figure(0, figsize=(11. / 2.54, 11. / 2.54), clear = True)
+                    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+                    ax, cbar = PlotMapInAxis(
+                        ax = ax, 
+                        data = data_fp, 
+                        lat = simus_lat, 
+                        lon = simus_lon, 
+                        extent = case_domain,
+                        title = formatter.format_string(
+                            template="title_orig",
+                            valid_time=valid_time,
+                            init_time=init_time,
+                            lead_time=lead_time.item()
+                        ),
+                        cb_label = f'{var_verif_description} ({var_verif_units})', 
+                        left_grid_label = False, 
+                        right_grid_label = True, 
+                        cmap = colormaps[var_verif]['map'], 
+                        norm = colormaps[var_verif]['norm']
+                    )
+                    fig.savefig(
+                        formatter.format_string(
+                            "plot_orig", init_time=init_time, lead_time=lead_time.item()
+                        ),
+                        dpi=600,
+                        bbox_inches='tight',
+                        pad_inches=0.05
+                    )
+                    plt.close(0)
+                    
+                    # regridding simus
+                    print(f'Regridding {init_time}+{str(lead_time).zfill(2)} time step from {exp} (original grid)')
+                    regridded_data = griddata(
+                        (simus_lon.flatten(), simus_lat.flatten()),
+                        data_fp.flatten(),
+                        (obs_lon, obs_lat),
+                        method = 'linear'
+                    )
+        
+                    # write netCDF
+                    ds = build_dataset(
+                        values=regridded_data, 
+                        date=date_simus_ini + timedelta(hours=lead_time.item()), 
+                        lat=obs_lat, 
+                        lon=obs_lon, 
+                        var_name=var_verif, 
+                        attrs_var={'units': var_verif_units, 'long_name': var_verif_description}
+                    )
+                    ds.to_netcdf(
+                        file_regrid,
+                        encoding={'time': {'units': 'seconds since 1970-01-01'}}
+                    )
+                    print('... DONE')
+        else:
+            print(f"INFO: Valid times outside the lead times availables for init: {init_time}. Avoiding regrid")
     return 0
 
 if __name__ == '__main__':

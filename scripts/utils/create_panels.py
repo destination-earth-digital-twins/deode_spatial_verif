@@ -48,62 +48,64 @@ def main(obs, case, exp):
             lead_times = lead_times[lead_times > 0].copy()
         else:
             pass
-        print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
-        
-        for lead_time in lead_times:
-            file_plot_regrid = formatter.format_string(
-                "plot_regrid",
-                init_time=init_time,
-                lead_time=lead_time.item()
-            )
-            if os.path.isfile(file_plot_regrid):
-                imagesRowBot = []
-                file_plot_orig = formatter.format_string(
-                    "plot_orig", init_time=init_time, lead_time=lead_time.item()
-                )
-                file_plot_fss = formatter.format_string(
-                    "plot_fss", init_time=init_time, lead_time=lead_time.item()
-                )
-                file_plot_sal = formatter.format_string(
-                    "plot_sal", init_time=init_time, lead_time=lead_time.item()
-                )
-                file_plot_objects = formatter.format_string(
-                    "plot_objects",
+
+        if len(lead_times) > 0:
+            print(f'Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
+            
+            for lead_time in lead_times:
+                file_plot_regrid = formatter.format_string(
+                    "plot_regrid",
                     init_time=init_time,
                     lead_time=lead_time.item()
                 )
-                for x in [file_plot_fss, file_plot_sal, file_plot_objects]:
-                    try:
-                        imagesRowBot.append(Image.open(x))
-                    except FileNotFoundError:
-                        pass
-                imagesRowTop = [Image.open(x) for x in [file_plot_regrid, file_plot_orig]]
-    
-                widthsRowBot, heightsRowBot = zip(*(i.size for i in imagesRowBot))
-                widthsRowTop, heightsRowTop = zip(*(i.size for i in imagesRowTop))
-    
-                max_width = max(sum(widthsRowBot), sum(widthsRowTop))
-                max_height = max(sum([heightsRowBot[0], max(heightsRowTop)]), sum([heightsRowBot[-1], max(heightsRowTop)]))
-    
-                new_im = Image.new('RGB', (max_width, max_height))
-    
-                x_offset, y_offset = 0, 0
-                for imBot in imagesRowTop:
-                    new_im.paste(imBot, (x_offset,y_offset))
-                    x_offset += imBot.size[0]
-    
-                x_offset, y_offset = 0, min(heightsRowTop)
-                for imTop in imagesRowBot:
-                    new_im.paste(imTop, (x_offset,y_offset))
-                    x_offset += imTop.size[0]
-    
-                new_im.save(
-                    formatter.format_string(
-                        "plot_panel",
+                if os.path.isfile(file_plot_regrid):
+                    imagesRowBot = []
+                    file_plot_orig = formatter.format_string(
+                        "plot_orig", init_time=init_time, lead_time=lead_time.item()
+                    )
+                    file_plot_fss = formatter.format_string(
+                        "plot_fss", init_time=init_time, lead_time=lead_time.item()
+                    )
+                    file_plot_sal = formatter.format_string(
+                        "plot_sal", init_time=init_time, lead_time=lead_time.item()
+                    )
+                    file_plot_objects = formatter.format_string(
+                        "plot_objects",
                         init_time=init_time,
                         lead_time=lead_time.item()
                     )
-                )
+                    for x in [file_plot_fss, file_plot_sal, file_plot_objects]:
+                        try:
+                            imagesRowBot.append(Image.open(x))
+                        except FileNotFoundError:
+                            pass
+                    imagesRowTop = [Image.open(x) for x in [file_plot_regrid, file_plot_orig]]
+        
+                    widthsRowBot, heightsRowBot = zip(*(i.size for i in imagesRowBot))
+                    widthsRowTop, heightsRowTop = zip(*(i.size for i in imagesRowTop))
+        
+                    max_width = max(sum(widthsRowBot), sum(widthsRowTop))
+                    max_height = max(sum([heightsRowBot[0], max(heightsRowTop)]), sum([heightsRowBot[-1], max(heightsRowTop)]))
+        
+                    new_im = Image.new('RGB', (max_width, max_height))
+        
+                    x_offset, y_offset = 0, 0
+                    for imBot in imagesRowTop:
+                        new_im.paste(imBot, (x_offset,y_offset))
+                        x_offset += imBot.size[0]
+        
+                    x_offset, y_offset = 0, min(heightsRowTop)
+                    for imTop in imagesRowBot:
+                        new_im.paste(imTop, (x_offset,y_offset))
+                        x_offset += imTop.size[0]
+        
+                    new_im.save(
+                        formatter.format_string(
+                            "plot_panel",
+                            init_time=init_time,
+                            lead_time=lead_time.item()
+                        )
+                    )
     return 0
 
 if __name__ == '__main__':

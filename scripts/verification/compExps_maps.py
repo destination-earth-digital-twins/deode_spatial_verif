@@ -61,8 +61,11 @@ def main(obs, case, exps):
             file_fss = formatter[exp].format_string(
                 "pickle_fss", init_time=init_time
             )
-            fss_scores = LoadPickle(file_fss)
-            lead_times_inits_exps[exp][init_time] = tuple(fss_scores.keys())
+            try:
+                fss_scores = LoadPickle(file_fss)
+                lead_times_inits_exps[exp][init_time] = tuple(fss_scores.keys())
+            except FileNotFoundError:
+                print(f"INFO: pickle '{file_fss}' not found.")
 
     # common inits & lead_times
     mask_isin = np.isin(list(lead_times_inits_exps[expLowRes].keys()), list(lead_times_inits_exps[expHighRes].keys()))

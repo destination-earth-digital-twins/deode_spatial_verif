@@ -34,7 +34,10 @@ def main(obs, case, exps):
             model_name[exp] = config_exp['model']['name']
             for init_time in config_exp['inits'].keys():
                 file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{model_name[exp].replace(' ', '').replace('.', '-')}_{exp}_{obs}_{init_time}.pkl"
-                dictionary[exp][init_time] = LoadPickle(file_pickl)
+                try:
+                    dictionary[exp][init_time] = LoadPickle(file_pickl)
+                except FileNotFoundError:
+                    print(f"INFO: pickle '{file_pickl}' not found.")
 
     # common inits & lead times from FSS pickles
     mask_isin = np.isin(list(fss[expLowRes].keys()), list(fss[expHighRes].keys()))
@@ -44,10 +47,13 @@ def main(obs, case, exps):
         mask_isin = np.isin(list(fss[expLowRes][init_time].keys()), list(fss[expHighRes][init_time].keys()))
         common_lead_times[init_time] = np.array(list(fss[expLowRes][init_time].keys()))[mask_isin]
         print(f'Set common lead times. {init_time}: {common_lead_times[init_time]}')
-    
-    # get thresholds and scales from FSS
-    namecols_fss = fss[expLowRes][common_inits[0]][common_lead_times[common_inits[0]][0]].columns
-    namerows_fss = fss[expLowRes][common_inits[0]][common_lead_times[common_inits[0]][0]].index
+
+    try:
+        # get thresholds and scales from FSS
+        namecols_fss = fss[expLowRes][common_inits[0]][common_lead_times[common_inits[0]][0]].columns
+        namerows_fss = fss[expLowRes][common_inits[0]][common_lead_times[common_inits[0]][0]].index
+    except IndexError:
+        raise ValueError(f"INFO: no common verifications lead times for case '{case}' and '{exps}'")
 
     # figure FSS mean
     fig = plt.figure(figsize = (19. / 2.54, 9. / 2.54), clear = True)

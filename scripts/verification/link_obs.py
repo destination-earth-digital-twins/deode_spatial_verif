@@ -18,6 +18,7 @@ def main(obs, case):
         f"config/obs_db/config_{obs_db}.yaml"
     )
     obs_path = config_obs_db["path"]
+    obs_path_destin = f"OBSERVATIONS/data_{obs}/{case}"
     obs_filename = config_obs_db["format"]["filename"][var_verif]
     print(
         f"INFO: Load config file for {obs_db} database: \n "
@@ -37,7 +38,7 @@ def main(obs, case):
     dates = pd.date_range(date_ini, date_end, freq="1h").to_pydatetime()
     for date in dates:
         obs_destin = date.strftime(
-            f"OBSERVATIONS/data_{obs}/{case}/{obs_filename}"
+            os.path.join(obs_path_destin, obs_filename)
         )
         if not os.path.isfile(obs_destin):
             obs_origin = date.strftime(os.path.join(obs_path, obs_filename))
@@ -48,6 +49,9 @@ def main(obs, case):
                 print(f"INFO: file {obs_origin} not downloaded")
         else:
             print(f"INFO: file {obs_destin} exists")
+
+    if check_is_empty_dir(os.path.join(obs_path_destin, "*")):
+        raise ValueError(f"Error: '{obs_path_destin}' está vacío.")
 
 
 if __name__ == "__main__":
