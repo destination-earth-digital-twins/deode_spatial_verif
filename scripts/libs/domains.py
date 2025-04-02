@@ -15,6 +15,8 @@ def set_domain_verif(valid_time, verif_domains):
 
 def CropDomainsFromBounds(data, lat2D, lon2D, bounds):
     lonMin, lonMax, latMin, latMax = bounds
+    print(lonMin, lonMax, latMin, latMax)
     ids = np.argwhere((lat2D >= latMin) & (lat2D <= latMax) & (lon2D >= lonMin) & (lon2D <= lonMax))
     idLatIni, idLatEnd, idLonIni, idLonEnd = ids[:,0].min(), ids[:,0].max() + 1, ids[:,1].min(), ids[:,1].max() + 1
+    print(idLatIni, idLatEnd, idLonIni, idLonEnd)
     return data[idLatIni:idLatEnd, idLonIni:idLonEnd].copy()

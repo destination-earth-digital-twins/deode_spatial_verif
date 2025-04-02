@@ -20,9 +20,10 @@ def main(obs, case, exp):
     print("INFO: RUNNING REGRID EXPERIMENT")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
-    pattern_to_find = f"*{var_verif}_{obs_db}grid_{case}*.nc"
+    pattern_to_find = f"*{var_verif}_{obs_db}grid_{case}*.nc"  
 
     # observation database info
+    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
     obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
@@ -32,17 +33,19 @@ def main(obs, case, exp):
         obs_var_get = config_obs_db['vars'][var_verif]['var']
     var_verif_description = config_obs_db['vars'][var_verif]['description']
     var_verif_units = config_obs_db['vars'][var_verif]['units']
-    print(f'INFO: Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get} ({var_verif_description}, in {var_verif_units})')
+    print(f'INFO: Loaded config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get} ({var_verif_description}, in {var_verif_units})')
 
     # Case data: initial date + end date
+    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
     config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     case_domain = config_case['location']['NOzoom']
     bounds_W, bounds_E, bounds_S, bounds_N = case_domain
-    print(f'INFO: Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}')
+    print(f'INFO: Loaded config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}')
 
     # exp data
+    print("INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
@@ -132,7 +135,7 @@ def main(obs, case, exp):
                         data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
                     
                     # postprocessing?? and crop
-                    if postprocess != 'None':
+                    if postprocess != "None":
                         data_raw_domain = postprocess_function[postprocess](data)
                         data_fp = CropDomainsFromBounds(data_raw_domain, simus_lat_orig, simus_lon_orig, [bounds_W - 5., bounds_E + 5., bounds_S - 5., bounds_N + 5.])
                     else:

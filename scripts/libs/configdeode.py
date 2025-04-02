@@ -1,6 +1,10 @@
 import os
 import re
-import tomllib
+import sys
+if sys.version_info >= (3, 11):
+    import tomllib  # Use built-in module in Python 3.11+
+else:
+    import tomli as tomllib  # Use third-party tomli for Python <3.11
 import yaml
 from datetime import datetime, timedelta
 from dateutil import parser
