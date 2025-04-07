@@ -5,6 +5,7 @@ import sys
 
 sys.path.append("scripts/libs")
 from configdeode import ConfigDeode
+from LoadWriteData import LoadConfigFileFromYaml
 
 
 def main():
@@ -83,6 +84,15 @@ def main():
         exp = args.exp
         case = args.case
 
+    # get accumulation period and frequency of verification
+    obs = args.obs
+    obs_db, var_verif = obs.split('_')
+    config_obs_db = LoadConfigFileFromYaml(
+        f"config/obs_db/config_{obs_db}.yaml"
+    )
+    accum_h = config_obs_db["vars"][var_verif]["verif"]["times"]["accum_hours"]
+    freq_verif = config_obs_db["vars"][var_verif]["verif"]["times"]["freq_verif"]
+
     if args.replace_outputs:
         replace = "True"
     else:
@@ -90,43 +100,44 @@ def main():
 
     subprocess.run([
         "python3", "scripts/verification/set_environment.py",
-        args.obs, case, exp
+        obs, case, exp
     ])
 
     if args.link_obs:
         subprocess.run([
             "python3", "scripts/verification/link_obs.py",
-            args.obs, case
+            obs, case
         ])
     if args.run_regrid:
         subprocess.run([
             "python3", "scripts/verification/regrid.py",
-            args.obs, case, exp
+            obs, case, exp
         ])
     if args.run_plot_regrid:
         subprocess.run([
             "python3", "scripts/utils/plot_regrid.py",
-            args.obs, case, exp, replace
+            obs, case, exp, replace
         ])
     if args.run_verif:
         subprocess.run([
             "python3", "scripts/verification/verification.py",
-            args.obs, case, exp, replace
+            obs, case, exp, replace
         ])
     if args.run_panels:
         subprocess.run([
             "python3", "scripts/utils/create_panels.py",
-            args.obs, case, exp
+            obs, case, exp
         ])
     if args.run_comparison and args.exp_ref:
         subprocess.run([
             'python3', 'scripts/verification/compExps_metrics.py',
-            args.obs, case, f"{args.exp_ref}-VS-{exp}"
+            obs, case, f"{args.exp_ref}-VS-{exp}"
         ])
-        subprocess.run([
-            'python3', 'scripts/verification/compExps_maps.py',
-            args.obs, case, f"{args.exp_ref}-VS-{exp}"
-        ])
+        if accum_h <= 1 and freq_verif == 1:
+            subprocess.run([
+                'python3', 'scripts/verification/compExps_maps.py',
+                obs, case, f"{args.exp_ref}-VS-{exp}"
+            ])
 
 
 if __name__ == '__main__':

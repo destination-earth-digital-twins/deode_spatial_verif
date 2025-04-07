@@ -21,6 +21,17 @@ def main(obs, case, exps):
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
 
+    # observation database info
+    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    config_obs_db = LoadConfigFileFromYaml(
+        f'config/obs_db/config_{obs_db}.yaml'
+    )
+    accum_h = config_obs_db["vars"][var_verif]["verif"]["times"]["accum_hours"]
+    print(
+        f"INFO: Loaded config file for {obs_db} database:\n "
+        f"verification time argument: acc. values: {accum_h} h; "
+    )
+
     # Experiments to compare between
     expLowRes, expHighRes = exps.split('-VS-')
     model_name = {}
@@ -30,12 +41,14 @@ def main(obs, case, exps):
     for dictionary, stat in zip((fss, sal), ('FSS', 'SAL')):
         for exp in (expLowRes, expHighRes):
             config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+            print(f"INFO: Loaded config file for {exp} simulation")
             dictionary[exp] = {}
             model_name[exp] = config_exp['model']['name']
             for init_time in config_exp['inits'].keys():
-                file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{model_name[exp].replace(' ', '').replace('.', '-')}_{exp}_{obs}_{init_time}.pkl"
+                file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{model_name[exp].replace(' ', '').replace('.', '-')}_{exp}_{obs}_acc{accum_h}h_{init_time}.pkl"
                 try:
                     dictionary[exp][init_time] = LoadPickle(file_pickl)
+                    print(f"INFO: pickle '{file_pickl}' loaded")
                 except FileNotFoundError:
                     print(f"INFO: pickle '{file_pickl}' not found.")
 
@@ -46,7 +59,10 @@ def main(obs, case, exps):
     for init_time in common_inits:
         mask_isin = np.isin(list(fss[expLowRes][init_time].keys()), list(fss[expHighRes][init_time].keys()))
         common_lead_times[init_time] = np.array(list(fss[expLowRes][init_time].keys()))[mask_isin]
-        print(f'Set common lead times. {init_time}: {common_lead_times[init_time]}')
+        print(
+            f"INFO: common lead times:\n {init_time}:\n "
+            f"{common_lead_times[init_time]}"
+        )
 
     try:
         # get thresholds and scales from FSS
@@ -78,7 +94,7 @@ def main(obs, case, exps):
             ax.tick_params(axis = 'y', length = 0.0, labelleft = False)
     fig.suptitle(f"FSS plot | mean values | OBS: {obs}", fontsize=8)
     fig.savefig(
-        f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_{exps.replace('-VS-', '_vs_')}.png",
+        f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png",
         dpi=600,
         bbox_inches="tight",
         pad_inches=0.05
@@ -135,7 +151,7 @@ def main(obs, case, exps):
         )
         fig.supxlabel("Scales", fontsize=8, fontweight="bold")
         fig.supylabel("Thresholds", fontsize=8, fontweight="bold")
-        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSdist_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSdist_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close()
     
     # figure SAL all
@@ -162,7 +178,7 @@ def main(obs, case, exps):
                 plot_legend=bool_legend
             )
         fig.suptitle(f"SAL plot | OBS: {obs}", fontsize=8)
-        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALall_{obs}_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
+        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALall_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
         plt.close()
     return 0
 

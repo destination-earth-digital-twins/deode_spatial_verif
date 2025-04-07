@@ -11,10 +11,14 @@
         'res': '3 km'
         'description': 'Brightness Temperature'
         'units': 'ºC'
-        'FSS': 
-            'thresholds': [-20, -30, -40, -50]
-            'scales': [1, 4, 16, 32, 64]
-        'SAL':
-            'f': 0.5
-            'q': 0.95
-            'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 50, "minmax": 41, "mindis": 10}
+        'verif':
+            'times':
+                'accum_hours': 0
+                'freq_verif': 1
+            'FSS': 
+                'thresholds': [-20, -30, -40, -50]
+                'scales': [1, 4, 16, 32, 64]
+            'SAL':
+                'f': 0.5
+                'q': 0.95
+                'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 50, "minmax": 41, "mindis": 10}

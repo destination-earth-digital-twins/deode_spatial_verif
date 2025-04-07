@@ -16,7 +16,7 @@ from times import set_lead_times
 from domains import set_domain_verif, CropDomainsFromBounds
 from customSAL import SAL, _sal_detect_objects
 from dicts import get_grid_function, get_data_function, colormaps
-from plots import PlotMapInAxis, plot_fss_scores, plot_sal, plot_detected_objects, plot_violin
+from plots import plot_fss_scores, plot_sal, plot_detected_objects
 
 offset = {'bt': 0}
 fss = verification.get_method("FSS")
@@ -29,51 +29,75 @@ def PixelToDistanceStr(nPixels, resolution):
     else:
         return f'{int(round(nPixels * value, 0))} {units}'
 
-def main(obs, case, exp, replace):
+def main(obs, case, exp, replace_bool):
     print("INFO: RUNNING SPATIAL VERIFICATION")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
 
     # observation database info
-    config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
+    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    config_obs_db = LoadConfigFileFromYaml(
+        f'config/obs_db/config_{obs_db}.yaml'
+    )
     obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
-    if config_obs_db['vars'][var_verif]['postprocess'] == True:
+    if config_obs_db['vars'][var_verif]['postprocess']:
         obs_var_get = var_verif
     else:
         obs_var_get = config_obs_db['vars'][var_verif]['var']
     obs_res = config_obs_db['vars'][var_verif]['res']
     var_verif_units = config_obs_db['vars'][var_verif]['units']
-    print(f'INFO: Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; variable to extract: {obs_var_get}')
+    accum_h = config_obs_db["vars"][var_verif]["verif"]["times"]["accum_hours"]
+    freq_verif = config_obs_db["vars"][var_verif]["verif"]["times"]["freq_verif"]
+    # update params if accumulated values
+    if accum_h > 1:
+        obs_filename = f"acc{accum_h}h_{'.'.join(obs_filename.split('.')[:-1])}.nc"
+        obs_fileformat = "netCDF"
+    print(
+        f"INFO: Loaded config file for {obs_db} database:\n "
+        f"file name: {obs_filename};\n file format: {obs_fileformat};\n "
+        f"var. to get: {obs_var_get} (units: {var_verif_units}, "
+        f"spatial res.: {obs_res})"
+    )
     
     # Case data: initial date + end date
+    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
     config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     verif_domains = config_case['verif_domain']
-    print(f'INFO: Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}; verification domains: {verif_domains}')
+    print(
+        f"INFO: Loaded config file for {case} case study:\n "
+        f'init: {config_case["dates"]["ini"]}; '
+        f'end: {config_case["dates"]["end"]};\n '
+        f"verification domains: {verif_domains}"
+    )
 
     # exp data
+    print("INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
     config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
     verif_at_0h = config_exp['vars'][var_verif]['verif_0h']
     find_min = config_exp['vars'][var_verif]['find_min']
-    print(f'INFO: Load config file for {exp} simulation: \n model: {exp_model}; variable to extract: {var_verif} ({config_obs_db["vars"][var_verif]["description"]}); units: {var_verif_units}')
+    print(
+        f"INFO: Loaded config file for {exp} simulation:\n "
+        f"model: {exp_model};\n var. to get: {var_verif}"
+    )
 
     # naming formatter
     formatter = NamingFormatter(obs, case, exp)
 
     # replace outputs bool
-    repl_outputs = str2bool(replace)
-    
+    repl_outputs = str2bool(replace_bool)
+
     # FSS & SAL params
-    thresh = config_obs_db['vars'][var_verif]['FSS']['thresholds']
-    scales = config_obs_db['vars'][var_verif]['FSS']['scales']
-    thr_factor = config_obs_db['vars'][var_verif]['SAL']['f']
-    thr_quantile = config_obs_db['vars'][var_verif]['SAL']['q']
-    detect_params = config_obs_db['vars'][var_verif]['SAL']['tstorm_kwargs']
+    thresh = config_obs_db['vars'][var_verif]["verif"]['FSS']['thresholds']
+    scales = config_obs_db['vars'][var_verif]["verif"]['FSS']['scales']
+    thr_factor = config_obs_db['vars'][var_verif]["verif"]['SAL']['f']
+    thr_quantile = config_obs_db['vars'][var_verif]["verif"]['SAL']['q']
+    detect_params = config_obs_db['vars'][var_verif]["verif"]['SAL']['tstorm_kwargs']
     if detect_params['max_num_features'] == 'None':
         detect_params.update({'max_num_features': None})
     
@@ -85,26 +109,39 @@ def main(obs, case, exp, replace):
     for init_time in config_exp['inits'].keys():
 
         date_exp_end = config_exp['inits'][init_time]['fcast_horiz']
-    
+
         # set lead times from experiments
         date_simus_ini = datetime.strptime(init_time, '%Y%m%d%H')
         date_simus_end = datetime.strptime(date_exp_end, '%Y%m%d%H')
-        lead_times = set_lead_times(date_ini, date_end, date_simus_ini, date_simus_end)
-        if is_accum == True:
-            lead_times = lead_times[lead_times >= 1].copy() # TODO: accum_hours instead 1h
-        elif verif_at_0h == False:
+        lead_times = set_lead_times(
+            date_ini=date_ini,
+            date_end=date_end,
+            date_sim_init=date_simus_ini,
+            date_sim_forecast=date_simus_end,
+            freq=freq_verif
+        )
+        if is_accum:
+            lead_times = lead_times[lead_times >= accum_h].copy()
+        elif not verif_at_0h:
             lead_times = lead_times[lead_times > 0].copy()
         else:
             pass
 
         if len(lead_times) > 0:
-            print(f'INFO: Forecast from {exp}: {init_time}+{str(lead_times[0]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[0].item()), "%Y%m%d%H")}) up to {init_time}+{str(lead_times[-1]).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_times[-1].item()), "%Y%m%d%H")})')
+            print(
+                f"INFO: Lead times from {exp}: "
+                f"{init_time}+{str(lead_times[0]).zfill(3)} "
+                f"({datetime.strftime(date_simus_ini + timedelta(hours=lead_times[0].item()), '%Y%m%d%H')}) "
+                f"up to {init_time}+{str(lead_times[-1].item()).zfill(3)} "
+                f"({datetime.strftime(date_simus_ini + timedelta(hours=lead_times[-1].item()), '%Y%m%d%H')}) "
+                f"with frequency: {freq_verif}h"
+            )
     
             file_pickle_fss = formatter.format_string(
-                "pickle_fss", init_time=init_time
+                template="pickle_fss", init_time=init_time, acc_h=accum_h
             )
             file_pickle_sal = formatter.format_string(
-                "pickle_sal", init_time=init_time
+                template="pickle_sal", init_time=init_time, acc_h=accum_h
             )
             if repl_outputs:
                 try:
@@ -143,36 +180,53 @@ def main(obs, case, exp, replace):
             listFSS_fcst = []
             for lead_time in lt_no_verif:
                 file_obs = datetime.strftime(
-                    date_simus_ini + timedelta(hours = lead_time.item()), 
+                    date_simus_ini + timedelta(hours=lead_time.item()),
                     f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}'
                 )
                 file_nwp = formatter.format_string(
-                    "regrid", init_time=init_time, lead_time=lead_time.item()
+                    template="regrid",
+                    init_time=init_time,
+                    lead_time=lead_time.item(),
+                    acc_h=accum_h
                 )
                 if os.path.isfile(file_obs) and os.path.isfile(file_nwp):
-                    data_obs = get_data_function[obs_fileformat](file_obs, [obs_var_get])
-                    obs_lat, obs_lon = get_grid_function[obs_fileformat](file_obs)
-                    data_nwp = get_data_function['netCDF'](file_nwp, [var_verif])
+                    data_obs = get_data_function[obs_fileformat](
+                        file_obs, obs_var_get
+                    )
+                    obs_lat, obs_lon = get_grid_function[obs_fileformat](
+                        file_obs
+                    )
+                    data_nwp = get_data_function['netCDF'](
+                        file_nwp, var_verif
+                    )
                     lat2D, lon2D = get_grid_function['netCDF'](file_nwp)
         
                     # set verif domain
                     verif_domain = set_domain_verif(
-                        date_simus_ini + timedelta(hours = lead_time.item()), 
+                        date_simus_ini + timedelta(hours=lead_time.item()), 
                         verif_domains
                     )
                     if verif_domain is None:
                         verif_domain = [
-                            lon_nwp[:, 0].max() + 0.5, 
-                            lon_nwp[:, -1].min() - 0.5, 
-                            lat_nwp[0, :].max() + 0.5, 
+                            lon_nwp[:, 0].max() + 0.5,
+                            lon_nwp[:, -1].min() - 0.5,
+                            lat_nwp[0, :].max() + 0.5,
                             lat_nwp[-1, :].min() - 0.5
                         ]
-                        print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")} UTC. By default: {verif_domain}')
-        
+                        print(
+                            "INFO: verif domain not established at "
+                            f'{datetime.strftime(date_simus_ini + timedelta(hours=lead_time.item()), "%Y%m%d%H")} '
+                            f"UTC. By default: {verif_domain}"
+                        )
+
                     # crop data to common domain
-                    data_nwp_common = CropDomainsFromBounds(data_nwp, lat2D, lon2D, verif_domain)
-                    data_obs_common = CropDomainsFromBounds(data_obs, obs_lat, obs_lon, verif_domain)
-        
+                    data_nwp_common = CropDomainsFromBounds(
+                        data_nwp, lat2D, lon2D, verif_domain
+                    )
+                    data_obs_common = CropDomainsFromBounds(
+                        data_obs, obs_lat, obs_lon, verif_domain
+                    )
+
                     # if the minimum values are searched, the array values have to be inverted due to the FSS and SAL methods 
                     # only allow searching for values above the selected thresholds. An offset must be added because 
                     # negative values are filtered out by the object detection algorithm. This offset is hard-coded in this script.
@@ -189,100 +243,139 @@ def main(obs, case, exp, replace):
                     else:
                         cmap = colormaps[var_verif]['map']
                         norm = colormaps[var_verif]['norm']
-                    
+
                     # FSS at each lead time
                     score[str(lead_time).zfill(2)] = {}
-                    print(f'Compute FSS for timestep {init_time}+{str(lead_time).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")}) scales: {fss_nameCols} threshold: {fss_nameRows}')
+                    print(
+                        'INFO: Compute FSS for timestep '
+                        f'{init_time}+{str(lead_time).zfill(3)} '
+                        f'({datetime.strftime(date_simus_ini + timedelta(hours=lead_time.item()), "%Y%m%d%H")})\n '
+                        f"scales: {fss_nameCols}\n threshold: {fss_nameRows}"
+                    )
                     for scale, nameCol in zip(scales, fss_nameCols):
                         score[str(lead_time).zfill(2)][nameCol] = []
                         for thr in thresh:
                             score[str(lead_time).zfill(2)][nameCol].append(
-                                fss(data_nwp_common, data_obs_common, thr, scale)
+                                fss(
+                                    data_nwp_common,
+                                    data_obs_common,
+                                    thr,
+                                    scale
+                                )
                             )
                     dictFSS[str(lead_time).zfill(2)] = pd.DataFrame(
-                        score[str(lead_time).zfill(2)], 
+                        score[str(lead_time).zfill(2)],
                         index = fss_nameRows
                     )
-                    listFSS_fcst.append(dictFSS[str(lead_time).zfill(2)].values.copy())
-        
+                    listFSS_fcst.append(
+                        dictFSS[str(lead_time).zfill(2)].values.copy()
+                    )
+
                     # plot FSS at each lead time
-                    fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
+                    fig, ax = plt.subplots(
+                        figsize=(9. / 2.54, 9. / 2.54), clear=True
+                    )
                     plot_fss_scores(
-                        ax=ax, 
-                        data=dictFSS[str(lead_time).zfill(2)], 
+                        ax=ax,
+                        data=dictFSS[str(lead_time).zfill(2)],
                         title=formatter.format_string(
-                            "title_fss", init_time=init_time, lead_time=lead_time.item()
+                            template="title_fss",
+                            init_time=init_time,
+                            lead_time=lead_time.item()
                         ),
                         x_label = 'Scale',
                         y_label = 'Threshold'
                     )
                     fig.savefig(
                         formatter.format_string(
-                            "plot_fss", init_time=init_time, lead_time=lead_time.item()
+                            template="plot_fss",
+                            init_time=init_time,
+                            lead_time=lead_time.item(),
+                            acc_h=accum_h
                         ),
-                        dpi=600, 
-                        bbox_inches='tight', 
+                        dpi=600,
+                        bbox_inches='tight',
                         pad_inches = 0.05
                     )
                     plt.close()
         
                     # SAL at each lead time
-                    print(f'Compute SAL for timestep {init_time}+{str(lead_time).zfill(3)} ({datetime.strftime(date_simus_ini + timedelta(hours = lead_time.item()), "%Y%m%d%H")}) f: {thr_factor}; q: {thr_quantile}; detection params: {detect_params}')
+                    print(
+                        'INFO: Compute SAL for timestep '
+                        f'{init_time}+{str(lead_time).zfill(3)} '
+                        f'({datetime.strftime(date_simus_ini + timedelta(hours=lead_time.item()), "%Y%m%d%H")})\n '
+                        f"f: {thr_factor};\n q: {thr_quantile};\n "
+                        f"detection params: {detect_params}"
+                    )
                     objects = {}
                     for k, array in zip(('OBS', 'PRED'), (data_obs_common, data_nwp_common)):
                         objects[k] = _sal_detect_objects(
-                            array, 
-                            thr_factor = thr_factor, 
-                            thr_quantile = thr_quantile, 
-                            tstorm_kwargs = detect_params
+                            array,
+                            thr_factor=thr_factor,
+                            thr_quantile=thr_quantile,
+                            tstorm_kwargs=detect_params
                         )
                     sValue, aValue, lValue = SAL(
-                        data_nwp_common, 
-                        data_obs_common, 
-                        thr_factor = thr_factor, 
-                        thr_quantile = thr_quantile, 
+                        data_nwp_common,
+                        data_obs_common,
+                        thr_factor = thr_factor,
+                        thr_quantile = thr_quantile,
                         tstorm_kwargs = detect_params,
                     )
-        
+
                     dfSALrow = pd.DataFrame(
-                        np.array([sValue, aValue, lValue]).reshape(1, 3), 
-                        columns = ['Structure', 'Amplitude', 'Location'], 
+                        np.array([sValue, aValue, lValue]).reshape(1, 3),
+                        columns = ['Structure', 'Amplitude', 'Location'],
                         index = [str(lead_time).zfill(2)]
                     )
                     dfSAL = pd.concat([dfSAL.copy(), dfSALrow.copy()])
         
                     # plot detected objects
                     fig = plot_detected_objects(
-                        observation_objects = objects['OBS'], 
-                        prediction_objects = objects['PRED'], 
-                        cmap = cmap, 
-                        norm = norm
+                        observation_objects=objects['OBS'],
+                        prediction_objects=objects['PRED'],
+                        cmap=cmap,
+                        norm=norm
                     )
                     fig.savefig(
                         formatter.format_string(
-                            "plot_objects",
+                            template="plot_objects",
                             init_time=init_time,
-                            lead_time=lead_time.item()
+                            lead_time=lead_time.item(),
+                            acc_h=accum_h
                         ),
-                        dpi = 600, 
-                        bbox_inches = 'tight', 
-                        pad_inches = 0.05
+                        dpi=600, 
+                        bbox_inches='tight', 
+                        pad_inches=0.05
                     )
         
                     # plot SAL at each lead time
                     figname_sal = formatter.format_string(
-                        "plot_sal", init_time=init_time, lead_time=lead_time.item()
+                        template="plot_sal",
+                        init_time=init_time,
+                        lead_time=lead_time.item(),
+                        acc_h=accum_h
                     )
                     if len(dfSALrow.dropna()) > 0:
                         with sns.axes_style('darkgrid'):
-                            fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
+                            fig, ax = plt.subplots(
+                                figsize=(9. / 2.54, 9. / 2.54), clear=True
+                            )
                             _ = plot_sal(
                                 ax=ax, 
-                                structures=dfSAL.loc[str(lead_time).zfill(2), 'Structure'], 
-                                amplitudes=dfSAL.loc[str(lead_time).zfill(2), 'Amplitude'], 
-                                locations=dfSAL.loc[str(lead_time).zfill(2), 'Location'], 
+                                structures=dfSAL.loc[
+                                    str(lead_time).zfill(2), 'Structure'
+                                ], 
+                                amplitudes=dfSAL.loc[
+                                    str(lead_time).zfill(2), 'Amplitude'
+                                ], 
+                                locations=dfSAL.loc[
+                                    str(lead_time).zfill(2), 'Location'
+                                ], 
                                 title=formatter.format_string(
-                                    "title_sal", init_time=init_time, lead_time=lead_time.item()
+                                    template="title_sal",
+                                    init_time=init_time,
+                                    lead_time=lead_time.item()
                                 ),
                                 detect_params={
                                     "f": thr_factor,
@@ -299,12 +392,24 @@ def main(obs, case, exp, replace):
                             )
                             plt.close()
                     elif os.path.isfile(figname_sal):
-                        print(f'no objects detected for {init_time}+{str(lead_time).zfill(2)}. Removing the previous file for clarity')
+                        print(
+                            "INFO: no objects detected for "
+                            f"{init_time}+{str(lead_time).zfill(2)}. "
+                            "Removing the previous file for clarity"
+                        )
                         os.remove(figname_sal)
                     else:
-                        print(f'no objects detected for {init_time}+{str(lead_time).zfill(2)}')
+                        print(
+                            "INFO: no objects detected for "
+                            f"{init_time}+{str(lead_time).zfill(2)}"
+                        )
                 else:
-                    print(f'INFO: Files {file_obs} and/or {file_nwp} not found. It is not possible to conduct the spatial verification for timestep: {init_time}+{str(lead_time).zfill(2)}')
+                    print(
+                        f"INFO: Files '{file_obs}' and/or '{file_nwp}' not "
+                        "found.\n It is not possible to conduct the spatial "
+                        "verification for timestep: "
+                        f"{init_time}+{str(lead_time).zfill(2)}"
+                    )
     
             verified_lt = np.array([int(lt_str) for lt_str in dictFSS.keys()]) # update lead times verified
             try:
@@ -314,39 +419,49 @@ def main(obs, case, exp, replace):
             if verif_complete:
                 # plot and save FSS and SAL verifications (mean and all, respectively)
                 dfFSS_mean = pd.DataFrame(
-                    np.nanmean(listFSS_fcst, axis = 0), 
-                    index = dictFSS[tuple(dictFSS.keys())[0]].index, 
+                    np.nanmean(listFSS_fcst, axis=0),
+                    index = dictFSS[tuple(dictFSS.keys())[0]].index,
                     columns = dictFSS[tuple(dictFSS.keys())[0]].columns
                 )
-                fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
+                fig, ax = plt.subplots(
+                    figsize=(9. / 2.54, 9. / 2.54), clear=True
+                )
                 plot_fss_scores(
-                    ax=ax, 
-                    data=dfFSS_mean, 
+                    ax=ax,
+                    data=dfFSS_mean,
                     title=formatter.format_string(
-                        "title_fss_period", init_time=init_time, lead_time=list(lead_times)
+                        template="title_fss_period",
+                        init_time=init_time,
+                        lead_time=list(lead_times)
                     ),
-                    x_label = 'Scale', 
+                    x_label = 'Scale',
                     y_label = 'Threshold'
                 )
                 fig.savefig(
                     formatter.format_string(
-                        "plot_fss_init", init_time=init_time
+                        template="plot_fss_init",
+                        init_time=init_time,
+                        acc_h=accum_h
                     ),
-                    dpi = 600, 
-                    bbox_inches = 'tight', 
-                    pad_inches = 0.05
+                    dpi=600, 
+                    bbox_inches='tight', 
+                    pad_inches=0.05
                 )
                 plt.close()
-                
+
                 with sns.axes_style('darkgrid'):
-                    fig, ax = plt.subplots(figsize = (9. / 2.54, 9. / 2.54), clear = True)
+                    fig, ax = plt.subplots(
+                        figsize=(9. / 2.54, 9. / 2.54), clear=True
+                    )
                     _ = plot_sal(
                         ax=ax, 
-                        structures=dfSAL.dropna()['Structure'].values, 
-                        amplitudes=dfSAL.dropna()['Amplitude'].values, 
-                        locations=dfSAL.dropna()['Location'].values, 
+                        structures=dfSAL.dropna()['Structure'].values,
+                        amplitudes=dfSAL.dropna()['Amplitude'].values,
+                        locations=dfSAL.dropna()['Location'].values,
                         title=formatter.format_string(
-                            "title_sal_period", init_time=init_time, lead_time=list(lead_times)
+                            template="title_sal_period",
+                            init_time=init_time,
+                            lead_time=list(lead_times)
                         ),
                         detect_params={
                             "f": thr_factor,
@@ -357,20 +472,22 @@ def main(obs, case, exp, replace):
                     )
                     fig.savefig(
                         formatter.format_string(
-                            "plot_sal_init", init_time=init_time
+                            template="plot_sal_init",
+                            init_time=init_time,
+                            acc_h=accum_h
                         ),
-                        dpi = 600, 
-                        bbox_inches = 'tight', 
-                        pad_inches = 0.05
+                        dpi=600, 
+                        bbox_inches='tight', 
+                        pad_inches=0.05
                     )
                     plt.close()
-    
+
             # save pickles
             dictFSS_sort = dict(sorted(dictFSS.items()))
             SavePickle(
                 dictFSS,
                 formatter.format_string(
-                    "pickle_fss", init_time=init_time
+                    "pickle_fss", init_time=init_time, acc_h=accum_h
                 )
             )
             dfSAL.sort_index(inplace=True)
@@ -378,7 +495,7 @@ def main(obs, case, exp, replace):
             SavePickle(
                 pickle_sal,
                 formatter.format_string(
-                    "pickle_sal", init_time=init_time
+                    "pickle_sal", init_time=init_time, acc_h=accum_h
                 )
             )
     return 0

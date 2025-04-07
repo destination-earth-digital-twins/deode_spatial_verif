@@ -6,7 +6,9 @@ def hours_between_dates(date_ini, date_end):
     hours = int((date_end - date_ini).total_seconds() / 3600.0)
     return hours
 
-def set_lead_times(date_ini, date_end, date_sim_init, date_sim_forecast):
+def set_lead_times(
+        date_ini, date_end, date_sim_init, date_sim_forecast, freq=1
+    ):
     if date_sim_init < date_ini:
         lead_time_ini = hours_between_dates(date_sim_init, date_ini)
     else:
@@ -15,7 +17,7 @@ def set_lead_times(date_ini, date_end, date_sim_init, date_sim_forecast):
         lead_time_end = hours_between_dates(date_sim_init, date_end)
     else:
         lead_time_end = hours_between_dates(date_sim_init, date_sim_forecast)
-    lead_times = np.arange(lead_time_ini, lead_time_end + 1)
+    lead_times = np.arange(lead_time_ini, lead_time_end + 1, freq)
     return lead_times.copy()
 
 def replace_function(text, replace_with):

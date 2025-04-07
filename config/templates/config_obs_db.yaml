@@ -9,13 +9,17 @@
         'var': ''
         'postprocess': 
         'res': ''
-	'description': ''
-	'units': ''
-        'FSS': 
-            'thresholds': []
-            'scales': []
-        'SAL':
-            'f': 
-            'q': 
-            'tstorm_kwargs': {"max_num_features": , "minref": , "maxref": , "mindiff": , "minsize": , "minmax": , "mindis": }
+	    'description': ''
+	    'units': ''
+        'verif':
+            'times':
+                'accum_hours': 1
+                'freq_verif': 1
+            'FSS': 
+                'thresholds': []
+                'scales': []
+            'SAL':
+                'f': 
+                'q': 
+                'tstorm_kwargs': {"max_num_features": , "minref": , "maxref": , "mindiff": , "minsize": , "minmax": , "mindis": }
 

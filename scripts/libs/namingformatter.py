@@ -27,7 +27,7 @@ class NamingFormatter(object):
         }
 
     def format_string(
-        self, template, valid_time=None, init_time=None, lead_time=None
+        self, template, valid_time=None, init_time=None, lead_time=None, acc_h=None
     ):
         
         if template in self.config_naming['Filenames']:
@@ -41,6 +41,8 @@ class NamingFormatter(object):
 
         if init_time is not None:
             template_str = template_str.replace("@init_time@", init_time)
+        if acc_h is not None:
+            template_str = template_str.replace("@accum@", str(acc_h))
         for placeholder, value in self.placeholders.items():
             template_str = template_str.replace(placeholder, value)
         

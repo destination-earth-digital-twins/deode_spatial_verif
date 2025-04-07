@@ -11,10 +11,14 @@
         'res': '0.1 º'
         'description': '1-hour Accumulated Precipitation'
         'units': 'mm'
-        'FSS': 
-            'thresholds': [0.5, 1, 2, 4, 8, 16]
-            'scales': [1, 2, 4, 6, 8, 10]
-        'SAL':
-            'f': 0.5
-            'q': 0.95
-            'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 20, "minmax": 41, "mindis": 10}
+        'verif':
+            'times':
+                'accum_hours': 1
+                'freq_verif': 1
+            'FSS': 
+                'thresholds': [0.5, 1, 2, 4, 8, 16]
+                'scales': [1, 2, 4, 6, 8, 10]
+            'SAL':
+                'f': 0.5
+                'q': 0.95
+                'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 20, "minmax": 41, "mindis": 10}

@@ -29,6 +29,10 @@ def main(obs, case, exps):
     obs_db, var_verif = obs.split('_')
 
     # observation database info
+    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    config_obs_db = LoadConfigFileFromYaml(
+        f"config/obs_db/config_{obs_db}.yaml"
+    )
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
     obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
@@ -38,13 +42,31 @@ def main(obs, case, exps):
         obs_var_get = config_obs_db['vars'][var_verif]['var']
     var_verif_description = config_obs_db['vars'][var_verif]['description']
     var_verif_units = config_obs_db['vars'][var_verif]['units']
-    print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get}')
+    accum_h = config_obs_db["vars"][var_verif]["verif"]["times"]["accum_hours"]
+    freq_verif = config_obs_db["vars"][var_verif]["verif"]["times"]["freq_verif"]
+    # update params if accumulated values
+    if accum_h > 1:
+        obs_filename = f"acc{accum_h}h_{'.'.join(obs_filename.split('.')[:-1])}.nc"
+        obs_fileformat = "netCDF"
+        var_verif_description = var_verif_description.replace(
+            "1-hour", f"{accum_h}-hour"
+        )
+    print(
+        f"INFO: Loaded config file for {obs_db} database:\n "
+        f"file name: {obs_filename};\n file format: {obs_fileformat};\n "
+        f"var. to get: {obs_var_get} ({var_verif_description}, "
+        f"in {var_verif_units})"
+    )
 
     # Case data
+    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
     config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
     case_domain = config_case['location']['NOzoom']
     verif_domains = config_case['verif_domain']
-    print(f'Map bounds: {case_domain}')
+    print(
+        f"INFO: Loaded config file for {case} case study:\n "
+        f"domain: {bounds_NOzoom};\n verification domains: {verif_domains}"
+    )
 
     # naming formatter
     formatter = {}
@@ -53,16 +75,17 @@ def main(obs, case, exps):
     configs_exps, lead_times_inits_exps = {}, {}
     expLowRes, expHighRes = exps.split('-VS-')
     for exp in (expLowRes, expHighRes):
-        print(f'Load config file: config/exp/config_{exp}.yaml')
         configs_exps[exp] = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+        print(f"INFO: Loaded config file for {exp} simulation")
         lead_times_inits_exps[exp] = {}
         formatter[exp] = NamingFormatter(obs, case, exp)
         for init_time in configs_exps[exp]['inits'].keys():
             file_fss = formatter[exp].format_string(
-                "pickle_fss", init_time=init_time
+                template="pickle_fss", init_time=init_time, acc_h=accum_h
             )
             try:
                 fss_scores = LoadPickle(file_fss)
+                print(f"INFO: pickle '{file_fss}' loaded")
                 lead_times_inits_exps[exp][init_time] = tuple(fss_scores.keys())
             except FileNotFoundError:
                 print(f"INFO: pickle '{file_fss}' not found.")
@@ -74,7 +97,10 @@ def main(obs, case, exps):
     for init_time in common_inits:
         mask_isin = np.isin(lead_times_inits_exps[expLowRes][init_time], lead_times_inits_exps[expHighRes][init_time])
         common_lead_times[init_time] = np.array(lead_times_inits_exps[expLowRes][init_time])[mask_isin]
-        print(f'Set common lead times. {init_time}: {common_lead_times[init_time]}')
+        print(
+            f"INFO: common lead times:\n {init_time}:\n "
+            f"{common_lead_times[init_time]}"
+        )
 
     values_databases = {}
     for iterator, init_time in enumerate(common_inits):
@@ -92,28 +118,58 @@ def main(obs, case, exps):
             values_databases[obs_db].append(obs_values.copy())
 
             expLowRes_file = formatter[expLowRes].format_string(
-                "regrid", init_time=init_time, lead_time=int(lead_time)
+                template="regrid",
+                init_time=init_time,
+                lead_time=int(lead_time),
+                acc_h=accum_h
             )
-            expLowRes_values, expLowRes_lat, expLowRes_lon = get_data_function['netCDF'](expLowRes_file, [var_verif, 'lat', 'lon'])
+            expLowRes_values, expLowRes_lat, expLowRes_lon = get_data_function['netCDF'](
+                expLowRes_file, [var_verif, 'lat', 'lon']
+            )
             values_databases[expLowRes].append(expLowRes_values.copy())
 
             expHighRes_file = formatter[expHighRes].format_string(
-                "regrid", init_time=init_time, lead_time=int(lead_time)
+                template="regrid",
+                init_time=init_time,
+                lead_time=int(lead_time),
+                acc_h=accum_h
             )
-            expHighRes_values, expHighRes_lat, expHighRes_lon = get_data_function['netCDF'](expHighRes_file, [var_verif, 'lat', 'lon'])
+            expHighRes_values, expHighRes_lat, expHighRes_lon = get_data_function['netCDF'](
+                expHighRes_file, [var_verif, 'lat', 'lon']
+            )
             values_databases[expHighRes].append(expHighRes_values.copy())
-            expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], int(lead_time))
-            expHighRes_file_orig = date_exp_ini.strftime(f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
+            expHighRes_fileformat = lead_time_replace(
+                configs_exps[expHighRes]['format']['filename'],
+                int(lead_time)
+            )
+            expHighRes_file_orig = date_exp_ini.strftime(
+                f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}"
+            )
             expHighRes_lat_orig, expHighRes_lon_orig = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
 
             # set verif domain
-            verif_domain = set_domain_verif(date_exp_ini + timedelta(hours = int(lead_time)), verif_domains)
+            verif_domain = set_domain_verif(
+                date_exp_ini + timedelta(hours=int(lead_time)),
+                verif_domains
+            )
             if verif_domain is None:
-                verif_domain = [expHighRes_lon_orig[:, 0].max() + 0.5, expHighRes_lon_orig[:, -1].min() - 0.5, expHighRes_lat_orig[0, :].max() + 0.5, expHighRes_lat_orig[-1, :].min() - 0.5]
-                print(f'verif domain not established for {datetime.strftime(date_simus_ini + timedelta(hours=int(lead_time)), "%Y%m%d%H")} UTC. By default: {verif_domain}')
+                verif_domain = [
+                    expHighRes_lon_orig[:, 0].max() + 0.5,
+                    expHighRes_lon_orig[:, -1].min() - 0.5,
+                    expHighRes_lat_orig[0, :].max() + 0.5,
+                    expHighRes_lat_orig[-1, :].min() - 0.5
+                ]
+                print(
+                    "INFO: verif domain not established at "
+                    f'{datetime.strftime(date_simus_ini + timedelta(hours=int(lead_time)), "%Y%m%d%H")} '
+                    f"UTC. By default: {verif_domain}"
+                )
 
             # Build the frame
-            print(f'plotting {expLowRes_file} vs {obs_file} vs {expHighRes_file}')
+            print(
+                f"INFO: plotting '{expLowRes_file}'\n vs {obs_file}\n vs "
+                f"{expHighRes_file}"
+            )
             fig_frame = plt.figure(0, figsize = (36.0 / 2.54, 11.0 / 2.54), clear = True)
             for iterator_axis, array2D, lat2D, lon2D, db, bool_left_label, bool_righ_label in zip(range(3), [expLowRes_values, obs_values, expHighRes_values], [expLowRes_lat, obs_lat, expHighRes_lat], [expLowRes_lon, obs_lon, expHighRes_lon], [expLowRes, obs_db, expHighRes], [True, False, False], [False, False, True]):
                 ax = fig_frame.add_subplot(1, 3, iterator_axis + 1, projection = ccrs.PlateCarree())
@@ -158,8 +214,8 @@ def main(obs, case, exps):
         # figure of total/max values
         fig = plt.figure(1, figsize = (36.0 / 2.54, 11.0 / 2.54), clear = True)
         if configs_exps[expLowRes]['vars'][var_verif]['accum']:
-            valid_ini = valid_times[0] - timedelta(hours = 1) # TODO: accum_hours instead 1h. CAREFULLY
-            lead_time_str_ini = str(int(common_lead_times[init_time][0]) - 1).zfill(2) # TODO: accum_hours instead 1h. CAREFULLY
+            valid_ini = valid_times[0] - timedelta(hours = 1)
+            lead_time_str_ini = str(int(common_lead_times[init_time][0]) - 1).zfill(2)
         else:
             valid_ini = valid_times[0]
             lead_time_str_ini = common_lead_times[init_time][0]
