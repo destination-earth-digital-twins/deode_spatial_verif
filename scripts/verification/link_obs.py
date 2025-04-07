@@ -6,9 +6,10 @@ import sys
 sys.path.append("scripts/libs/")
 from miscelanea import check_is_empty_dir
 from LoadWriteData import LoadConfigFileFromYaml
+from pathlib import Path
 
 
-def main(obs, case):
+def main(obs, case, relative_indexed_path):
     print("INFO: RUNNING LINK OBS")
     # OBS data: database + variable
     obs_db, var_verif = obs.split("_")
@@ -18,7 +19,9 @@ def main(obs, case):
         f"config/obs_db/config_{obs_db}.yaml"
     )
     obs_path = config_obs_db["path"]
-    obs_path_destin = f"OBSERVATIONS/data_{obs}/{case}"
+    print(f"case is {case}")
+    obs_path_destin = f"OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}"
+    os.makedirs(obs_path_destin, exist_ok=True)
     obs_filename = config_obs_db["format"]["filename"][var_verif]
     print(
         f"INFO: Load config file for {obs_db} database: \n "
@@ -26,7 +29,8 @@ def main(obs, case):
     )
 
     # Case data: initial date + end date
-    config_case = LoadConfigFileFromYaml(f"config/Case/config_{case}.yaml")
+    config_path = f"config/Case/{relative_indexed_path}/config_{case}.yaml"
+    config_case = LoadConfigFileFromYaml(str(config_path))
     date_ini = datetime.strptime(config_case["dates"]["ini"], "%Y%m%d%H")
     date_end = datetime.strptime(config_case["dates"]["end"], "%Y%m%d%H")
     print(
@@ -55,4 +59,4 @@ def main(obs, case):
 
 
 if __name__ == "__main__":
-    main(str(sys.argv[1]), str(sys.argv[2]))
+    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]))

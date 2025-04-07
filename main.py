@@ -27,6 +27,9 @@ def main():
         "--exp", type=str, help="exp argument"
     )
     parser.add_argument(
+        "--relative_indexed_path", type=str, default="", help="relative path to store config files and outputs"
+    )
+    parser.add_argument(
         "--exp_ref", type=str,
         help="reference experiment to be compared with"
     )
@@ -87,45 +90,45 @@ def main():
         replace = "True"
     else:
         replace = "False"
-
+    print("running set environment now")
     subprocess.run([
         "python3", "scripts/verification/set_environment.py",
-        args.obs, case, exp
+        args.obs, case, exp, args.relative_indexed_path
     ])
 
     if args.link_obs:
         subprocess.run([
             "python3", "scripts/verification/link_obs.py",
-            args.obs, case
+            args.obs, case, args.relative_indexed_path
         ])
     if args.run_regrid:
         subprocess.run([
             "python3", "scripts/verification/regrid.py",
-            args.obs, case, exp
+            args.obs, case, exp, args.relative_indexed_path
         ])
     if args.run_plot_regrid:
         subprocess.run([
             "python3", "scripts/utils/plot_regrid.py",
-            args.obs, case, exp, replace
+            args.obs, case, exp, args.relative_indexed_path, replace
         ])
     if args.run_verif:
         subprocess.run([
             "python3", "scripts/verification/verification.py",
-            args.obs, case, exp, replace
+            args.obs, case, exp, args.relative_indexed_path, replace
         ])
     if args.run_panels:
         subprocess.run([
             "python3", "scripts/utils/create_panels.py",
-            args.obs, case, exp
+            args.obs, case, exp, args.relative_indexed_path
         ])
     if args.run_comparison and args.exp_ref:
         subprocess.run([
             'python3', 'scripts/verification/compExps_metrics.py',
-            args.obs, case, f"{args.exp_ref}-VS-{exp}"
+            args.obs, case, f"{args.exp_ref}-VS-{exp}", args.relative_indexed_path
         ])
         subprocess.run([
             'python3', 'scripts/verification/compExps_maps.py',
-            args.obs, case, f"{args.exp_ref}-VS-{exp}"
+            args.obs, case, f"{args.exp_ref}-VS-{exp}", args.relative_indexed_path
         ])
 
 

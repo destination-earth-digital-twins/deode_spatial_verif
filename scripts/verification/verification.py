@@ -29,7 +29,7 @@ def PixelToDistanceStr(nPixels, resolution):
     else:
         return f'{int(round(nPixels * value, 0))} {units}'
 
-def main(obs, case, exp, replace):
+def main(obs, case, exp, relative_indexed_path, replace):
     print("INFO: RUNNING SPATIAL VERIFICATION")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
@@ -47,14 +47,14 @@ def main(obs, case, exp, replace):
     print(f'INFO: Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; variable to extract: {obs_var_get}')
     
     # Case data: initial date + end date
-    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    config_case = LoadConfigFileFromYaml(f'config/Case/{relative_indexed_path}/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     verif_domains = config_case['verif_domain']
     print(f'INFO: Load config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}; verification domains: {verif_domains}')
 
     # exp data
-    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    config_exp = LoadConfigFileFromYaml(f'config/exp/{relative_indexed_path}/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
@@ -63,7 +63,7 @@ def main(obs, case, exp, replace):
     print(f'INFO: Load config file for {exp} simulation: \n model: {exp_model}; variable to extract: {var_verif} ({config_obs_db["vars"][var_verif]["description"]}); units: {var_verif_units}')
 
     # naming formatter
-    formatter = NamingFormatter(obs, case, exp)
+    formatter = NamingFormatter(obs, case, exp, relative_indexed_path)
 
     # replace outputs bool
     repl_outputs = str2bool(replace)
@@ -144,7 +144,7 @@ def main(obs, case, exp, replace):
             for lead_time in lt_no_verif:
                 file_obs = datetime.strftime(
                     date_simus_ini + timedelta(hours = lead_time.item()), 
-                    f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}'
+                    f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}'
                 )
                 file_nwp = formatter.format_string(
                     "regrid", init_time=init_time, lead_time=lead_time.item()
@@ -384,4 +384,4 @@ def main(obs, case, exp, replace):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+    main(sys.argv[1], sys.argv[2], sys.argv[3],  sys.argv[4], sys.argv[5])

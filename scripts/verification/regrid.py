@@ -14,16 +14,17 @@ from times import set_lead_times, lead_time_replace
 from domains import CropDomainsFromBounds
 from dicts import get_grid_function, get_data_function, colormaps, postprocess_function
 from plots import PlotMapInAxis
+from pathlib import Path
 
 
-def main(obs, case, exp):
+def main(obs, case, exp, relative_indexed_path):
     print("INFO: RUNNING REGRID EXPERIMENT")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
     pattern_to_find = f"*{var_verif}_{obs_db}grid_{case}*.nc"  
 
     # observation database info
-    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    print(f"INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
     config_obs_db = LoadConfigFileFromYaml(f'config/obs_db/config_{obs_db}.yaml')
     obs_filename = config_obs_db['format']['filename'][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
@@ -36,8 +37,12 @@ def main(obs, case, exp):
     print(f'INFO: Loaded config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get} ({var_verif_description}, in {var_verif_units})')
 
     # Case data: initial date + end date
-    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
-    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+
+    config_path = Path(f"config/Case/{relative_indexed_path}/config_{case}.yaml")
+    print(f"INFO: Loading CASE YAML file: config/Case/{relative_indexed_path}/config_{case}.yaml")
+    if not config_path.exists():
+     raise FileNotFoundError(f"config_{case}.yaml not found at {config_path}")
+    config_case = LoadConfigFileFromYaml(str(config_path))
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     case_domain = config_case['location']['NOzoom']
@@ -45,8 +50,11 @@ def main(obs, case, exp):
     print(f'INFO: Loaded config file for {case} case study: \n init: {config_case["dates"]["ini"]}; end: {config_case["dates"]["end"]}')
 
     # exp data
-    print("INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
-    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    print(f"INFO: Loading EXP YAML file: config/exp//{relative_indexed_path}/config_{exp}.yaml")
+    config_path = Path(f"config/exp/{relative_indexed_path}/config_{exp}.yaml")
+    if not config_path.exists():
+     raise FileNotFoundError(f"config_{exp}.yaml not found at {config_path}")
+    config_exp = LoadConfigFileFromYaml(str(config_path))
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     exp_filepaths = config_exp['format']['filepaths']
@@ -59,7 +67,7 @@ def main(obs, case, exp):
     print(f'INFO: Load config file for {exp} simulation: \n model: {exp_model}; file paths: {exp_filepaths}; file name: {exp_filename}; file format: {exp_fileformat}; var. to get: {exp_var_get} ({var_verif})')
 
     # naming formatter
-    formatter = NamingFormatter(obs, case, exp)
+    formatter = NamingFormatter(obs, case, exp, relative_indexed_path)
     
     # init times of nwp
     for init_time in config_exp['inits'].keys():
@@ -94,12 +102,15 @@ def main(obs, case, exp):
                         datetime.strftime(date_simus_ini, files_orig_path), 
                         exp_filename_t
                     )
-                    os.system(f'ln -s {exp_origin} SIMULATIONS/{exp}/data_orig/{init_time}/')
+                    linked_simulations=f'SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}'
+                    os.makedirs(os.path.dirname(linked_simulations), exist_ok=True)
+                    print(f'linking  {exp_origin} to SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/')
+                    os.system(f'ln -s {exp_origin} SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/')
 
                     # check lat-lon coordinates from original exps are already retrieved
                     if simus_lat is None and simus_lon is None:
-                        obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
-                        simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}')
+                        obs_file = datetime.strftime(date_ini, f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}')
+                        simus_file = datetime.strftime(date_simus_ini, f'SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/{exp_filename_t}')
                         obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
                         simus_lat_orig, simus_lon_orig = get_grid_function[exp_fileformat](simus_file)
 
@@ -118,11 +129,11 @@ def main(obs, case, exp):
                             datetime.strftime(date_simus_ini, files_orig_path), 
                             exp_filename_dt
                         )
-                        os.system(f'ln -s {exp_origin_dt} SIMULATIONS/{exp}/data_orig/{init_time}/')
+                        os.system(f'ln -s {exp_origin_dt} SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/')
 
                         # example: pcp(t) = tp(t) - tp(t-1); where pcp is 1-hour accumulated precipitation and tp the total precipitation
-                        data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
-                        data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}'), exp_var_get)
+                        data_t = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
+                        data_dt = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/{exp_filename_dt}'), exp_var_get)
                         if isinstance(exp_var_get, list): # assume all variables have accumulated values
                             data = []
                             for values_t, values_dt in zip(data_t, data_dt):
@@ -132,7 +143,7 @@ def main(obs, case, exp):
                             diff = data_t - data_dt
                             data = np.where(diff < 0, 0., diff)
                     else:
-                        data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
+                        data = get_data_function[exp_fileformat](datetime.strftime(date_simus_ini, f'SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}/{exp_filename_t}'), exp_var_get)
                     
                     # postprocessing?? and crop
                     if postprocess != "None":
@@ -201,4 +212,4 @@ def main(obs, case, exp):
     return 0
 
 if __name__ == '__main__':
-    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]))
+    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]), str(sys.argv[4]) )

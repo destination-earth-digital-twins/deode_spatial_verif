@@ -24,7 +24,7 @@ def sorted_list_files(string):
     list_files.sort()
     return list_files
     
-def main(obs, case, exps):
+def main(obs, case, exps, relative_indexed_path):
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
 
@@ -41,7 +41,7 @@ def main(obs, case, exps):
     print(f'Load config file for {obs_db} database: \n file name: {obs_filename}; file format: {obs_fileformat}; var. to get: {obs_var_get}')
 
     # Case data
-    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    config_case = LoadConfigFileFromYaml(f'config/Case/{relative_indexed_path}/config_{case}.yaml')
     case_domain = config_case['location']['NOzoom']
     verif_domains = config_case['verif_domain']
     print(f'Map bounds: {case_domain}')
@@ -53,10 +53,10 @@ def main(obs, case, exps):
     configs_exps, lead_times_inits_exps = {}, {}
     expLowRes, expHighRes = exps.split('-VS-')
     for exp in (expLowRes, expHighRes):
-        print(f'Load config file: config/exp/config_{exp}.yaml')
-        configs_exps[exp] = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+        print(f'Load config file: config/exp/{relative_indexed_path}/config_{exp}.yaml')
+        configs_exps[exp] = LoadConfigFileFromYaml(f'config/exp/{relative_indexed_path}/config_{exp}.yaml')
         lead_times_inits_exps[exp] = {}
-        formatter[exp] = NamingFormatter(obs, case, exp)
+        formatter[exp] = NamingFormatter(obs, case, exp, relative_indexed_path)
         for init_time in configs_exps[exp]['inits'].keys():
             file_fss = formatter[exp].format_string(
                 "pickle_fss", init_time=init_time
@@ -86,7 +86,7 @@ def main(obs, case, exps):
         for lead_time in common_lead_times[init_time]:
             valid_time = date_exp_ini + timedelta(hours = int(lead_time))
             valid_times.append(valid_time)
-            obs_file = valid_time.strftime(f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}')
+            obs_file = valid_time.strftime(f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}')
             obs_values = get_data_function[obs_fileformat](obs_file, obs_var_get)
             obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
             values_databases[obs_db].append(obs_values.copy())
@@ -103,7 +103,7 @@ def main(obs, case, exps):
             expHighRes_values, expHighRes_lat, expHighRes_lon = get_data_function['netCDF'](expHighRes_file, [var_verif, 'lat', 'lon'])
             values_databases[expHighRes].append(expHighRes_values.copy())
             expHighRes_fileformat = lead_time_replace(configs_exps[expHighRes]['format']['filename'], int(lead_time))
-            expHighRes_file_orig = date_exp_ini.strftime(f"SIMULATIONS/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
+            expHighRes_file_orig = date_exp_ini.strftime(f"SIMULATIONS/{relative_indexed_path}/{expHighRes}/data_orig/{init_time}/{expHighRes_fileformat}")
             expHighRes_lat_orig, expHighRes_lon_orig = get_grid_function[configs_exps[expHighRes]['format']['fileformat']](expHighRes_file_orig)
 
             # set verif domain
@@ -205,7 +205,7 @@ def main(obs, case, exps):
             if iterator_axis == 2:
                 ax = plot_domain_in_axis(ax, expHighRes_lat_orig, expHighRes_lon_orig)
         fig.savefig(
-            f"PLOTS/main_plots/{case}/{key}_{var_verif}_{case}_{exps.replace('-VS-', '_')}_{obs_db}_{init_time}+{lead_time_str_ini}_+{common_lead_times[init_time][-1]}.png",
+            f"PLOTS/main_plots/{relative_indexed_path}/{case}/{key}_{var_verif}_{case}_{exps.replace('-VS-', '_')}_{obs_db}_{init_time}+{lead_time_str_ini}_+{common_lead_times[init_time][-1]}.png",
             dpi=600,
             bbox_inches='tight',
             pad_inches=0.05
@@ -235,4 +235,4 @@ def main(obs, case, exps):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

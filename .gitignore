@@ -12,6 +12,13 @@ config/obs_db/*
 pickles/FSS/*
 pickles/SAL/*
 main.sh
+PLOTS/side_plots/plots_IMERG_pcp/*
+PLOTS/side_plots/plots_OPERA_rain/*
+scripts/libs/__pycache__/*
+standalones/*
+tomls/*
+
+
 # Except this file
 !config/Case/config_Spain_202205.yaml
 !config/exp/config_AIB_46h1_de2.yaml
