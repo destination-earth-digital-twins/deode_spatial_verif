@@ -29,13 +29,13 @@ def PixelToDistanceStr(nPixels, resolution):
     else:
         return f'{int(round(nPixels * value, 0))} {units}'
 
-def main(obs, case, exp, replace_bool):
+def main(obs, case, exp, relative_indexed_path, replace_bool):
     print("INFO: RUNNING SPATIAL VERIFICATION")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
 
     # observation database info
-    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    print(f"INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
     config_obs_db = LoadConfigFileFromYaml(
         f'config/obs_db/config_{obs_db}.yaml'
     )
@@ -61,8 +61,8 @@ def main(obs, case, exp, replace_bool):
     )
     
     # Case data: initial date + end date
-    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
-    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    print(f"INFO: Loading CASE YAML file: config/Case/{relative_indexed_path}/config_{case}.yaml")
+    config_case = LoadConfigFileFromYaml(f'config/Case/{relative_indexed_path}/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     verif_domains = config_case['verif_domain']
@@ -74,8 +74,8 @@ def main(obs, case, exp, replace_bool):
     )
 
     # exp data
-    print("INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
-    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    print(f"INFO: Loading EXP YAML file: config/exp/{relative_indexed_path}/config_{exp}.yaml")
+    config_exp = LoadConfigFileFromYaml(f'config/exp/{relative_indexed_path}/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
@@ -87,7 +87,7 @@ def main(obs, case, exp, replace_bool):
     )
 
     # naming formatter
-    formatter = NamingFormatter(obs, case, exp)
+    formatter = NamingFormatter(obs, case, exp, relative_indexed_path)
 
     # replace outputs bool
     repl_outputs = str2bool(replace_bool)
@@ -181,7 +181,7 @@ def main(obs, case, exp, replace_bool):
             for lead_time in lt_no_verif:
                 file_obs = datetime.strftime(
                     date_simus_ini + timedelta(hours=lead_time.item()),
-                    f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}'
+                    f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}'
                 )
                 file_nwp = formatter.format_string(
                     template="regrid",
@@ -501,4 +501,4 @@ def main(obs, case, exp, replace_bool):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+    main(sys.argv[1], sys.argv[2], sys.argv[3],  sys.argv[4], sys.argv[5])

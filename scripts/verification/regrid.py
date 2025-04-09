@@ -16,13 +16,14 @@ from dicts import get_grid_function, get_data_function, colormaps, postprocess_f
 from plots import PlotMapInAxis
 
 
-def main(obs, case, exp):
+def main(obs, case, exp, relative_indexed_path):
     print("INFO: RUNNING REGRID EXPERIMENT")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
+    pattern_to_find = f"*{var_verif}_{obs_db}grid_{case}*.nc"  
 
     # observation database info
-    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    print(f"INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
     config_obs_db = LoadConfigFileFromYaml(
         f"config/obs_db/config_{obs_db}.yaml"
     )
@@ -51,8 +52,8 @@ def main(obs, case, exp):
     )
 
     # Case data: initial date + end date
-    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
-    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    print(f"INFO: Loading CASE YAML file: config/Case/{relative_indexed_path}/config_{case}.yaml")
+    config_case = LoadConfigFileFromYaml(f'config/Case/{relative_indexed_path}/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     case_domain = config_case['location']['NOzoom']
@@ -64,8 +65,8 @@ def main(obs, case, exp):
     )
 
     # exp data
-    print("INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
-    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    print(f"INFO: Loading EXP YAML file: config/exp/{relative_indexed_path}/config_{exp}.yaml")
+    config_exp = LoadConfigFileFromYaml(f'config/exp/{relative_indexed_path}/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     exp_filepaths = config_exp['format']['filepaths']
@@ -83,7 +84,7 @@ def main(obs, case, exp):
     )
 
     # naming formatter
-    formatter = NamingFormatter(obs, case, exp)
+    formatter = NamingFormatter(obs, case, exp, relative_indexed_path)
 
     # init times of nwp
     for init_time in config_exp['inits'].keys():
@@ -136,20 +137,23 @@ def main(obs, case, exp):
                         datetime.strftime(date_simus_ini, files_orig_path), 
                         exp_filename_t
                     )
+                    path_linked_sim = f"SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}"
+                    os.makedirs(os.path.dirname(path_linked_sim), exist_ok=True)
+                    print(f"INFO: linking  {exp_origin} to {path_linked_sim}")
                     os.system(
                         f"ln -s {exp_origin} "
-                        f"SIMULATIONS/{exp}/data_orig/{init_time}/"
+                        f"{path_linked_sim}/"
                     )
 
                     # check lat-lon coordinates from original exps are already retrieved
                     if simus_lat is None and simus_lon is None:
                         obs_file = datetime.strftime(
                             date_ini,
-                            f'OBSERVATIONS/data_{obs}/{case}/{obs_filename}'
+                            f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}'
                         )
                         simus_file = datetime.strftime(
                             date_simus_ini,
-                            f"SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}"
+                            f"{path_linked_sim}/{exp_filename_t}"
                         )
                         obs_lat_orig, obs_lon_orig = get_grid_function[obs_fileformat](obs_file)
                         simus_lat_orig, simus_lon_orig = get_grid_function[exp_fileformat](simus_file)
@@ -208,7 +212,7 @@ def main(obs, case, exp):
                         )
                         os.system(
                             f"ln -s {exp_origin_dt} "
-                            f"SIMULATIONS/{exp}/data_orig/{init_time}/"
+                            f"{path_linked_sim}/"
                         )
 
                         # example: pcp(t) = tp(t) - tp(t-1)
@@ -216,14 +220,14 @@ def main(obs, case, exp):
                         data_t = get_data_function[exp_fileformat](
                             datetime.strftime(
                                 date_simus_ini,
-                                f"SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}"
+                                f"{path_linked_sim}/{exp_filename_t}"
                             ),
                             exp_var_get
                         )
                         data_dt = get_data_function[exp_fileformat](
                             datetime.strftime(
                                 date_simus_ini,
-                                f"SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_dt}"
+                                f"{path_linked_sim}/{exp_filename_dt}"
                             ),
                             exp_var_get
                         )
@@ -240,7 +244,7 @@ def main(obs, case, exp):
                         data = get_data_function[exp_fileformat](
                             datetime.strftime(
                                 date_simus_ini,
-                                f"SIMULATIONS/{exp}/data_orig/{init_time}/{exp_filename_t}"
+                                f"{path_linked_sim}/{exp_filename_t}"
                             ),
                             exp_var_get
                         )
@@ -336,9 +340,17 @@ def main(obs, case, exp):
                         }
                     )
                     print('... DONE')
+                else:
+                    print(
+                        f"INFO: file '{file_regrid}' already exists. "
+                        "Avoiding regrid"
+                    )
         else:
-            print(f"INFO: Valid times outside the lead times availables for init: {init_time}. Avoiding regrid")
+            print(
+                "INFO: Valid times outside the lead times availables for "
+                f"init: {init_time}. Avoiding regrid"
+            )
     return 0
 
 if __name__ == '__main__':
-    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]))
+    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]), str(sys.argv[4]) )

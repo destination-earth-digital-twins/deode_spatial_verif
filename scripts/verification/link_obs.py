@@ -10,7 +10,7 @@ from LoadWriteData import LoadConfigFileFromYaml, build_dataset
 from dicts import get_data_function, get_grid_function
 
 
-def main(obs, case):
+def main(obs, case, relative_indexed_path):
     print("INFO: RUNNING LINK OBS")
     # OBS data: database + variable
     obs_db, var_verif = obs.split("_")
@@ -21,7 +21,7 @@ def main(obs, case):
         f"config/obs_db/config_{obs_db}.yaml"
     )
     obs_path = config_obs_db["path"]
-    obs_path_destin = f"OBSERVATIONS/data_{obs}/{case}"
+    obs_path_destin = f"OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}"
     obs_filename = config_obs_db["format"]["filename"][var_verif]
     obs_fileformat = config_obs_db['format']['fileformat']
     if config_obs_db['vars'][var_verif]['postprocess']:
@@ -41,8 +41,8 @@ def main(obs, case):
     )
 
     # Case data: initial date + end date
-    print(f"INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
-    config_case = LoadConfigFileFromYaml(f"config/Case/config_{case}.yaml")
+    print(f"INFO: Loading CASE YAML file: config/Case/{relative_indexed_path}/config_{case}.yaml")
+    config_case = LoadConfigFileFromYaml(f"config/Case/{relative_indexed_path}/config_{case}.yaml")
     date_ini = datetime.strptime(config_case["dates"]["ini"], "%Y%m%d%H")
     date_end = datetime.strptime(config_case["dates"]["end"], "%Y%m%d%H")
     print(
@@ -126,4 +126,4 @@ def main(obs, case):
 
 
 if __name__ == "__main__":
-    main(str(sys.argv[1]), str(sys.argv[2]))
+    main(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]))

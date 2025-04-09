@@ -15,7 +15,7 @@ from LoadWriteData import LoadConfigFileFromYaml
 from times import set_lead_times
 
 
-def main(obs, case, exp):
+def main(obs, case, exp, relative_indexed_path):
     print("INFO: RUNNING CREATE PANELS")
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
@@ -34,8 +34,8 @@ def main(obs, case, exp):
     )
     
     # Case data: initial date + end date
-    print("INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
-    config_case = LoadConfigFileFromYaml(f'config/Case/config_{case}.yaml')
+    print(f"INFO: Loading CASE YAML file: config/Case/config_{case}.yaml")
+    config_case = LoadConfigFileFromYaml(f'config/Case/{relative_indexed_path}/config_{case}.yaml')
     date_ini = datetime.strptime(config_case['dates']['ini'], '%Y%m%d%H')
     date_end = datetime.strptime(config_case['dates']['end'], '%Y%m%d%H')
     print(
@@ -45,8 +45,8 @@ def main(obs, case, exp):
     )
 
     # exp data
-    print("INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
-    config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+    print(f"INFO: Loading EXP YAML file: config/exp/config_{exp}.yaml")
+    config_exp = LoadConfigFileFromYaml(f'config/exp/{relative_indexed_path}/config_{exp}.yaml')
     exp_model = config_exp['model']['name']
     exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
     is_accum = config_exp['vars'][var_verif]['accum']
@@ -57,7 +57,7 @@ def main(obs, case, exp):
     )
 
     # naming formatter
-    formatter = NamingFormatter(obs, case, exp)
+    formatter = NamingFormatter(obs, case, exp, relative_indexed_path)
 
     # init times of nwp
     for init_time in config_exp['inits'].keys():
@@ -161,4 +161,4 @@ def main(obs, case, exp):
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3],  sys.argv[4])

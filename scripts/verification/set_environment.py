@@ -4,110 +4,66 @@
 import os, sys
 sys.path.append('scripts/libs/')
 from LoadWriteData import LoadConfigFileFromYaml
+from pathlib import Path
 
-def main(obs, case, exp):
+def main(obs, case, exp, relative_indexed_path):
+    print("INFO: RUNNING SET ENVIRONMENT")
     # current work directory
     cwd = os.getcwd()
 
     # exp data
-    dataExp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
-    
+    config_exp = f"config/exp/{relative_indexed_path}/config_{exp}.yaml"
+    print("INFO: Loading EXP YAML file: {config_exp}")
+    if not os.path.isfile(config_exp):
+        raise FileNotFoundError(f"ERROR: {config_exp} not found")
+    data_exp = LoadConfigFileFromYaml(config_exp)
+    inits_exp = list(data_exp['inits'].keys())
+    print(
+        f"INFO: Loaded config file for {exp} simulation:\n "
+        f"inits available: {inits_exp}"
+    )
+
     # OBSERVATIONS
-    os.chdir(f'{cwd}/OBSERVATIONS/')
-    if os.path.exists(f'data_{obs}/') == False:
-        os.mkdir(f'data_{obs}')
-    os.chdir(f'data_{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
+    os.makedirs(
+        f"{cwd}/OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/",
+        exist_ok=True
+    )
     
     # SIMULATIONS
-    os.chdir(f'{cwd}/SIMULATIONS/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
-    os.chdir(f'{exp}/')
-    if os.path.exists('data_orig/') == False:
-        os.mkdir('data_orig')
-    os.chdir('data_orig/')
-    for init_time in dataExp['inits'].keys():
-        if os.path.exists(f'{init_time}/') == False:
-            os.mkdir(init_time)
-    os.chdir(f'{cwd}/SIMULATIONS/{exp}/')
-    if os.path.exists('data_regrid/') == False:
-        os.mkdir('data_regrid')
-    os.chdir('data_regrid/')
-    for init_time in dataExp['inits'].keys():
-        if os.path.exists(f'{init_time}/') == False:
-            os.mkdir(init_time)
-    
+    for init_time in inits_exp:
+        for key in ("orig", "regrid"):
+            os.makedirs(
+                f"{cwd}/SIMULATIONS/{relative_indexed_path}/{exp}/data_{key}/{init_time}",
+                exist_ok=True
+            )
+
     # PLOTS
-    os.chdir(f'{cwd}/PLOTS/main_plots/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    
-    os.chdir(f'{cwd}/PLOTS/side_plots/')
-    if os.path.exists(f'plots_{obs}/') == False:
-        os.mkdir(f'plots_{obs}')
-    os.chdir(f'plots_{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    os.chdir(f'{case}/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
-    os.chdir(f'{cwd}/PLOTS/side_plots/plots_verif/FSS/')
-    if os.path.exists(f'{obs}/') == False:
-        os.mkdir(obs)
-    os.chdir(f'{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    os.chdir(f'{case}/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
-    os.chdir(f'{cwd}/PLOTS/side_plots/plots_verif/SAL/')
-    if os.path.exists(f'{obs}/') == False:
-        os.mkdir(obs)
-    os.chdir(f'{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    os.chdir(f'{case}/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
-    os.chdir(f'{cwd}/PLOTS/side_plots/plots_verif/panels/')
-    if os.path.exists(f'{obs}/') == False:
-        os.mkdir(obs)
-    os.chdir(f'{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    os.chdir(f'{case}/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
-    os.chdir(f'{cwd}/PLOTS/side_plots/plots_verif/gif_frames/')
-    if os.path.exists(f'{obs}/') == False:
-        os.mkdir(obs)
-    os.chdir(f'{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
+    os.makedirs(
+        f"{cwd}/PLOTS/main_plots/{relative_indexed_path}/{case}/",
+        exist_ok=True
+    )
+    os.makedirs(
+        f"{cwd}/PLOTS/side_plots/plots_{obs}/{relative_indexed_path}/{case}/{exp}",
+        exist_ok=True
+    )
+    for key in ("FSS", "SAL", "panels"):
+        os.makedirs(
+            f"{cwd}/PLOTS/side_plots/plots_verif/{key}/{obs}/{relative_indexed_path}/{case}/{exp}",
+            exist_ok=True
+        )
+    os.makedirs(
+        f"{cwd}/PLOTS/side_plots/plots_verif/gif_frames/{obs}/{relative_indexed_path}/{case}",
+        exist_ok=True
+    )
 
     # pickles
-    os.chdir(f'{cwd}/pickles/FSS')
-    if os.path.exists(f'{obs}/') == False:
-        os.mkdir(obs)
-    os.chdir(f'{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    os.chdir(f'{case}/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
-    os.chdir(f'{cwd}/pickles/SAL/')
-    if os.path.exists(f'{obs}/') == False:
-        os.mkdir(obs)
-    os.chdir(f'{obs}/')
-    if os.path.exists(f'{case}/') == False:
-        os.mkdir(case)
-    os.chdir(f'{case}/')
-    if os.path.exists(f'{exp}/') == False:
-        os.mkdir(exp)
+    for key in ("FSS", "SAL"):
+        os.makedirs(
+            f"{cwd}/pickles/{key}/{obs}/{relative_indexed_path}/{case}/{exp}",
+            exist_ok=True
+        )
 
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

@@ -17,7 +17,7 @@ def sorted_list_files(string):
     list_files.sort()
     return list_files
 
-def main(obs, case, exps):
+def main(obs, case, exps, relative_indexed_path):
     # OBS data: database + variable
     obs_db, var_verif = obs.split('_')
 
@@ -40,12 +40,12 @@ def main(obs, case, exps):
     fss, sal = {}, {}
     for dictionary, stat in zip((fss, sal), ('FSS', 'SAL')):
         for exp in (expLowRes, expHighRes):
-            config_exp = LoadConfigFileFromYaml(f'config/exp/config_{exp}.yaml')
+            config_exp = LoadConfigFileFromYaml(f'config/exp/{relative_indexed_path}/config_{exp}.yaml')
             print(f"INFO: Loaded config file for {exp} simulation")
             dictionary[exp] = {}
             model_name[exp] = config_exp['model']['name']
             for init_time in config_exp['inits'].keys():
-                file_pickl = f"pickles/{stat}/{obs}/{case}/{exp}/{stat}_{model_name[exp].replace(' ', '').replace('.', '-')}_{exp}_{obs}_acc{accum_h}h_{init_time}.pkl"
+                file_pickl = f"pickles/{stat}/{obs}/{relative_indexed_path}/{case}/{exp}/{stat}_{model_name[exp].replace(' ', '').replace('.', '-')}_{exp}_{obs}_acc{accum_h}h_{init_time}.pkl"
                 try:
                     dictionary[exp][init_time] = LoadPickle(file_pickl)
                     print(f"INFO: pickle '{file_pickl}' loaded")
@@ -94,7 +94,7 @@ def main(obs, case, exps):
             ax.tick_params(axis = 'y', length = 0.0, labelleft = False)
     fig.suptitle(f"FSS plot | mean values | OBS: {obs}", fontsize=8)
     fig.savefig(
-        f"PLOTS/main_plots/{case}/Comparison_FSSmean_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png",
+        f"PLOTS/main_plots/{relative_indexed_path}/{case}/Comparison_FSSmean_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png",
         dpi=600,
         bbox_inches="tight",
         pad_inches=0.05
@@ -151,7 +151,7 @@ def main(obs, case, exps):
         )
         fig.supxlabel("Scales", fontsize=8, fontweight="bold")
         fig.supylabel("Thresholds", fontsize=8, fontweight="bold")
-        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_FSSdist_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
+        fig.savefig(f"PLOTS/main_plots/{relative_indexed_path}/{case}/Comparison_FSSdist_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)
         plt.close()
     
     # figure SAL all
@@ -178,9 +178,9 @@ def main(obs, case, exps):
                 plot_legend=bool_legend
             )
         fig.suptitle(f"SAL plot | OBS: {obs}", fontsize=8)
-        fig.savefig(f"PLOTS/main_plots/{case}/Comparison_SALall_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
+        fig.savefig(f"PLOTS/main_plots/{relative_indexed_path}/{case}/Comparison_SALall_{obs}_acc{accum_h}h_{exps.replace('-VS-', '_vs_')}.png", dpi = 600, bbox_inches = 'tight', pad_inches = 0.05)   
         plt.close()
     return 0
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

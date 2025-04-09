@@ -2,21 +2,25 @@ import datetime
 
 from LoadWriteData import LoadConfigFileFromYaml
 from times import lead_time_replace
+from pathlib import Path
 
 
 class NamingFormatter(object):
     def __init__(
-        self, obs, case, exp, config_file="config/config_formatting.yaml"
+        self, obs, case, exp, relative_indexed_path, config_file="config/config_formatting.yaml"
     ):
 
         self.config_naming = LoadConfigFileFromYaml(config_file)
-        self.config_exp = LoadConfigFileFromYaml(
-            f"config/exp/config_{exp}.yaml"
-        )
+
+        config_path = Path(f"config/exp/{relative_indexed_path}/config_{exp}.yaml")
+        if not config_path.exists():
+           raise FileNotFoundError(f"config_{exp}.yaml not found at {config_path}")
+        self.config_exp = LoadConfigFileFromYaml(str(config_path))
         obs_db, var_verif = obs.split('_')
         exp_model = self.config_exp["model"]["name"]
         exp_model_in_filename = exp_model.replace(' ', '').replace('.', '-')
         self.placeholders = {
+            "@relative_indexed_path@": relative_indexed_path,
             "@obs@": obs,
             "@case@": case,
             "@exp@": exp,
