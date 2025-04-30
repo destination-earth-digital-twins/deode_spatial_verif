@@ -14,6 +14,7 @@ pickles/SAL/*
 main.sh
 PLOTS/side_plots/plots_IMERG_pcp/*
 PLOTS/side_plots/plots_OPERA_rain/*
+PLOTS/side_plots/plots_Antilope_pcp/*
 scripts/libs/__pycache__/*
 standalones/*
 tomls/*
@@ -24,5 +25,6 @@ tomls/*
 !config/exp/config_AIB_46h1_de2.yaml
 !config/exp/config_VAL500m_46h1_de2.yaml
 !config/obs_db/config_IMERG.yaml
-!config/Case/config_OPERA.yaml
-!config/Case/config_SEVIRI.yaml
+!config/obs_db/config_OPERA.yaml
+!config/obs_db/config_SEVIRI.yaml
+!config/obs_db/config_Antilope.yaml

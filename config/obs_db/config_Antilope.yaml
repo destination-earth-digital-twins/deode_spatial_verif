@@ -1,0 +1,24 @@
+'path':
+    '/scratch/rm6/meteofrance/antilope/%Y%m%d/'
+'format':
+    'filename':
+        'pcp': '%Y%m%d%H.anti_RR1_FRANXL1S100.grib'
+    'fileformat': 'Grib'
+'vars':
+    'pcp':
+        'var': 'prec'
+        'postprocess': False
+        'res': '0.01 º'
+        'description': '1-hour Accumulated Precipitation'
+        'units': 'mm'
+        'verif':
+            'times':
+                'accum_hours': 1
+                'freq_verif': 1
+            'FSS': 
+                'thresholds': [0.5, 1, 2, 4, 8, 16]
+                'scales': [5, 10, 20, 40, 60]
+            'SAL':
+                'f': 1.0
+                'q': 0.9
+                'tstorm_kwargs': {"max_num_features": None, "minref": 35, "maxref": 48, "mindiff": 6, "minsize": 50, "minmax": 41, "mindis": 10}

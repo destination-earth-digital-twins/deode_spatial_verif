@@ -25,7 +25,7 @@ def PixelToDistanceStr(nPixels, resolution):
     valueStr, units = resolution.split(' ')
     value = float(valueStr)
     if value < 1.0:
-        return f'{round(nPixels * value, 1)} {units}'
+        return f'{round(nPixels * value, 2)} {units}'
     else:
         return f'{int(round(nPixels * value, 0))} {units}'
 
