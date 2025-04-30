@@ -136,11 +136,10 @@ def main():
             'python3', 'scripts/verification/compExps_metrics.py',
             obs, case, f"{args.exp_ref}-VS-{exp}", args.relative_indexed_path
         ])
-        if accum_h <= 1 and freq_verif == 1:
-            subprocess.run([
-                'python3', 'scripts/verification/compExps_maps.py',
-                obs, case, f"{args.exp_ref}-VS-{exp}", args.relative_indexed_path
-            ])
+        subprocess.run([
+            'python3', 'scripts/verification/compExps_maps.py',
+            obs, case, f"{args.exp_ref}-VS-{exp}", args.relative_indexed_path
+        ])
 
 
 if __name__ == '__main__':

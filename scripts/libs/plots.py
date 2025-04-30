@@ -54,9 +54,9 @@ def PlotMapInAxis(ax, data, lat, lon, extent = [], title = '', cb_label = '', fo
     )
     
     if cmap is not None and norm is not None:
-        cf = ax.pcolormesh(lon, lat, data, cmap = cmap, norm = norm, transform = ccrs.PlateCarree())
+        cf = ax.pcolormesh(lon, lat, data, cmap=cmap, norm=norm, transform=ccrs.PlateCarree(), shading="nearest")
     else:
-        cf = ax.pcolormesh(lon, lat, data)
+        cf = ax.pcolormesh(lon, lat, data, transform=ccrs.PlateCarree(), shading="nearest")
     
     cb = plt.colorbar(
         cf, 

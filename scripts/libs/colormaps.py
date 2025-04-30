@@ -208,6 +208,15 @@ ecmwf_accum_pcp_colors = [(0.75, 0.95, 0.93), (0.45, 0.93, 0.78), (0.06999, 0.85
            (0.45, 0.45, 0.45)]
 ecmwf_accum_pcp_cmap, ecmwf_accum_pcp_norm = from_levels_and_colors(ecmwf_accum_pcp_levels, ecmwf_accum_pcp_colors, extend = 'max')
 
+# add white for values between 0.0 - 0.5
+ecmwf_accum_pcp_levels.insert(0, 0.)
+ecmwf_accum_pcp_colors.insert(0, "white")
+ecmwf_accum_pcp_cmap_2, ecmwf_accum_pcp_norm_2 = from_levels_and_colors(
+    ecmwf_accum_pcp_levels,
+    ecmwf_accum_pcp_colors,
+    extend = 'max'
+)
+
 ecmw_pcp_levels = [0,0.1,0.25,0.5,1,1.5,2,2.5,3,4,5,6,8,10,12,20,40]
 ecmw_pcp_colors = [
     'white',
