@@ -5,7 +5,7 @@ Documentation
 
 **Legend:**
 
-\(i\) *OBS*: combination of the database name of the observations (\<obs_db\>) along with the variable to be verified (\<var_verif\>) joined with the character \"\_\", e.g. SEVIRI_bt, IMERG_pcp, OPERA_rain. 
+\(i\) *OBS*: combination of the database name of the observations (\<obs_db\>) along with the variable to be verified (\<var_verif\>) joined with the character \"\_\", e.g. SEVIRI_bt, IMERG_pcp, OPERA_rain, Antilope_pcp. 
 
 \(ii\) *Case*: name of the extreme event to be verified. It is recommended to use the same case study name as in [dcmdb](https://github.com/destination-earth-digital-twins/dcmdb) database, if it exists there, although for the moment the connection between dcmdb and deode_spatial_verif has not been done.
 
@@ -41,19 +41,27 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
         -   **units**. \[str\]. Units of \<var_verif\>.
 
-        -   FSS. Threshold and scales for FSS.
+        -   verif. Information regarding the verification parameters.
 
-            -   **thresholds**. \[list\]. List of the different thresholds (float values) to be verified in FSS.
+            -   times. Accumulation periods and verification frequencies.
 
-            -   **scales**. \[list\]. List of the different scales (int values) to be verified in FSS. Numbers relate to pixels, not length units.
+                -   **accum_hours**. \[int\]. In case you want to verify an accumulated variable, this parameter indicates the number of hours to be accumulated for each timestep to be verified. The accum parameter must be set to True in the [exp config file](https://github.com/destination-earth-digital-twins/deode_spatial_verif?tab=readme-ov-file#experiment-config-file-config_expyaml).
 
-        -   SAL. Parameters to be used in SAL. These parameters are only used for object detection, which is required to compute structure and location values.
+                -   **freq_verif**. \[int\]. Frequency, in number of hours, of each verification timestep.
 
-            -   **f**. \[float\]. Multiplicative factor to apply in the SAL methodology following [(Wernli et al., 2008)](https://journals.ametsoc.org/view/journals/mwre/136/11/2008mwr2415.1.xml). The value they set is 1/15.
+            -   FSS. Threshold and scales for FSS.
 
-            -   **q**. \[float\]. Quartile of the observations/experiments to be estimated to set an object detection threshold. A value of 0.95 is recommended to avoid outliers [(Gilleland et al., 2009)](https://journals.ametsoc.org/view/journals/wefo/24/5/2009waf2222269_1.xml).
+                -   **thresholds**. \[list\]. List of the different thresholds (float values) to be verified in FSS.
 
-            -   **tstorm_kwargs**. \[dict\]. Additional object detection parameters. See [tstorm](https://github.com/pySTEPS/pysteps/blob/master/pysteps/feature/tstorm.py) for further details.
+                -   **scales**. \[list\]. List of the different scales (int values) to be verified in FSS. Numbers relate to pixels, not length units.
+
+            -   SAL. Parameters to be used in SAL. These parameters are only used for object detection, which is required to compute structure and location values.
+
+                -   **f**. \[float\]. Multiplicative factor to apply in the SAL methodology following [(Wernli et al., 2008)](https://journals.ametsoc.org/view/journals/mwre/136/11/2008mwr2415.1.xml). The value they set is 1/15.
+
+                -   **q**. \[float\]. Quartile of the observations/experiments to be estimated to set an object detection threshold. A value of 0.95 is recommended to avoid outliers [(Gilleland et al., 2009)](https://journals.ametsoc.org/view/journals/wefo/24/5/2009waf2222269_1.xml).
+
+                -   **tstorm_kwargs**. \[dict\]. Additional object detection parameters. See [tstorm](https://github.com/pySTEPS/pysteps/blob/master/pysteps/feature/tstorm.py) for further details.
 
 ## Case config file: config\_\<Case\>.yaml
 
@@ -79,7 +87,7 @@ The templates of these files are located in the config/templates/ folder. Modifi
 
 -   format. Name and extension of the files to be used as predictions for spatial verification.
 
-    -   **filepaths**. \[list\]. List with the different directories where the experiments are located. It is IMPORTANT that, even if there is only one directory, the path is preceded by a \",\". If the path contains the name of the experiment, you can replace this name by \"%exp\". The use of several paths makes it possible to use, for the same experiment, high resolution simulations that have been generated with different domains.
+    -   **filepaths**. \[list\]. List with the different directories where the experiments are located. If the path contains the name of the experiment, you can replace this name by \"%exp\". The use of several paths makes it possible to use, for the same experiment, high resolution simulations that have been generated with different domains.
 
     -   **filename**. \[str\]. Name of the experiment file with extension, if any. It must contain the required characters to indicate the date format used by datetime. The lead time must be indicated as "%L", with as many L's as digits.
 
@@ -185,7 +193,7 @@ These files perform the following tasks:
 
 ## using existing observations
 
-Another possibility is to use the observations that have been previously downloaded and adapted to the tool by following [the steps discussed above](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#before-start). For this, the parameter [\"path\": \<path\>](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#observation-config-file-config_obs_dbyaml) must be set to the path where the observations have been stored and [run the verification exercise](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#run-spatial-verification) with the `--link_obs` option specified. At the moment, the observations are being downloaded daily on the ATOS path: `/ec/res4/scratch/esp0754/auto_obs_db`
+Another possibility is to use the observations that have been previously downloaded and adapted to the tool by following [the steps discussed above](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#before-start). For this, the parameter [\"path\": \<path\>](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#observation-config-file-config_obs_dbyaml) must be set to the path where the observations have been stored and [run the verification exercise](https://github.com/DEODE-NWP/deode_spatial_verif?tab=readme-ov-file#run-spatial-verification) with the `--link_obs` option specified. At the moment, the IMERG and SEVIRI products are being downloaded daily on the ATOS path: `/ec/res4/scratch/esp0754/auto_obs_db`. OPERA_rain products can be found at `/scratch/snh02/DE_observations/opera`. Antilope products can be found at `/scratch/rm6/meteofrance/antilope/`.
 
 # Run spatial verification
 
@@ -199,7 +207,7 @@ successfully, successive programs cannot be used.
 
 0.  The set_environment.py script creates the required folders (if they do not exist) to save the generated products. It is always executed by the main script.
 
-1.  Storage of observations in the appropriate directory. This can be done in two ways: i) download observations using the [download](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsdownloadsdownload_obspy) or [processing](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsutilspostproccess_opera_var_verifpy) scripts; ii) the link_obs.py script creates the links to the [previously downloaded observational files](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsutilspostproccess_opera_var_verifpy) in the appropriate folder. This way is executed with the `--link_obs` argument of main.py.
+1.  Storage of observations in the appropriate directory. This can be done in two ways: i) download observations using the [download](https://github.com/DEODE-NWP/deode_spatial_verif/tree/main?tab=readme-ov-file#scriptsdownloadsdownload_obspy) scripts; ii) the link_obs.py script creates the links to the [previously downloaded observational files](https://github.com/destination-earth-digital-twins/deode_spatial_verif/tree/main?tab=readme-ov-file#using-existing-observations) in the appropriate folder. If the parameter [accum_hours](https://github.com/destination-earth-digital-twins/deode_spatial_verif?tab=readme-ov-file#observation-config-file-config_obs_dbyaml) > 1, the program computes new files in the same directory with the accumulated values from the **1-h accumulated values** of the observations. This way is executed with the `--link_obs` argument of main.py.
 
 2.  The regrid.py script links the simulations of an experiment to the directory (created at initial step) and performs a linear interpolation of the data to the grid of the observations to be verified. Additionally, a plot with the experiment data in its original grid is generated. This plot allows to check that the variable selected in the experiment is the correct one. This step is executed with the `--run_regrid` argument of main.py.
 
@@ -209,7 +217,7 @@ successfully, successive programs cannot be used.
 
     1.  The comExps_metrics.py script generates the mean FSS comparison, the FSS distributions for each threshold and scale, the SAL scatter-plot of both experiments and the SAL distributions.
 
-    2.  The compExps_maps.py script allows the comparison in a subjective way with a gif plot (and the frames that compose it) of the fields to be verified for each of the experiments against the observational values. In addition, an additional plot is generated with the total accumulated value during the extreme event if the variable to be verified is precipitation/rainfall or with the maximum (minimum) of the event for each point if the variable to be verified is reflectivity (brightness temperature).
+    2.  The compExps_maps.py script allows the comparison in a subjective way with a visualization of the total accumulated values during the extreme event if the variable to be verified is precipitation/rainfall or with the maximum (minimum) of the event for each point if the variable to be verified is reflectivity (brightness temperature).
 
 ## Helpful scripts
 

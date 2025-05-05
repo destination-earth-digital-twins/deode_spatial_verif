@@ -1,7 +1,8 @@
 'model':
     'name': ''
 'format':
-    'filepaths': []
+    'filepaths':
+        - 
     'filename': ''
     'fileformat': ''
 'inits':
