@@ -1,11 +1,10 @@
 import os
 import re
 import sys
-if sys.version_info >= (3, 11):
-    import tomllib  # Use built-in module in Python 3.11+
-else:
-    import tomli as tomllib  # Use third-party tomli for Python <3.11
-import yaml
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Fallback for earlier versionsimport yaml
 from datetime import datetime, timedelta
 from dateutil import parser
 import pandas as pd
