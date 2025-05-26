@@ -143,6 +143,7 @@ def main(obs, case, exps, relative_indexed_path):
                 f"INFO: file '{fig_total_name}' not found.\n "
                 "Collecting files for plotting..."
             )
+            plot_fig = True
             # concatenate arrays for obs and exps
             valid_times = []
             values_exp_lowres = []
@@ -179,7 +180,7 @@ def main(obs, case, exps, relative_indexed_path):
                 )
 
                 # get lat lon coordinates from obs and exps
-                if obs_lat is None:
+                if obs_lat is None and os.path.isfile(obs_file):
                     obs_lat, obs_lon = get_grid_function[obs_fileformat](obs_file)
                 if expLowRes_lat is None and os.path.isfile(exp_lowres_file):
                     expLowRes_lat, expLowRes_lon = get_grid_function[configs_exps[expLowRes]['format']['fileformat']](
@@ -191,12 +192,16 @@ def main(obs, case, exps, relative_indexed_path):
                     )
 
                 # append values
-                values_obs.append(
-                    get_data_function[obs_fileformat](
-                        obs_file,
-                        obs_var_get
+                try:
+                    values_obs.append(
+                        get_data_function[obs_fileformat](
+                            obs_file,
+                            obs_var_get
+                        )
                     )
-                )
+                except FileNotFoundError:
+                    print(f"INFO: file '{obs_file}' not found.")
+                    plot_fig = False
                 combined_lists = zip(
                     (expLowRes, expHighRes),
                     (exp_lowres_file, exp_highres_file),
@@ -225,96 +230,103 @@ def main(obs, case, exps, relative_indexed_path):
                             list_values.append(values_pp.copy())
                         except OSError:
                             print(f"INFO: file '{filename}' not found.")
+                            plot_fig = False
 
             # plotting
-            fig = plt.figure(
-                iterator, figsize=(36.0 / 2.54, 11.0 / 2.54), clear=True
-            )
-            combined_lists = zip(
-                range(3),
-                (expLowRes, obs_db, expHighRes),
-                (values_exp_lowres, values_obs, values_exp_highres),
-                (expLowRes_lat, obs_lat, expHighRes_lat),
-                (expLowRes_lon, obs_lon, expHighRes_lon),
-                (True, False, False),
-                (False, False, True)
-            )
-            for itr, db, values, lat, lon, llabel, rlabel in combined_lists:
-                ax = fig.add_subplot(
-                    1, 3, itr + 1, projection = ccrs.PlateCarree()
+            if plot_fig:
+                fig = plt.figure(
+                    iterator, figsize=(36.0 / 2.54, 11.0 / 2.54), clear=True
                 )
-                if itr == 1:
-                    title = (
-                        f"{db}\nValid from "
-                        f'{valid_times[0].strftime("%Y-%m %d-%Hz")} to '
-                        f'{valid_times[-1].strftime("%d-%Hz")}'
+                combined_lists = zip(
+                    range(3),
+                    (expLowRes, obs_db, expHighRes),
+                    (values_exp_lowres, values_obs, values_exp_highres),
+                    (expLowRes_lat, obs_lat, expHighRes_lat),
+                    (expLowRes_lon, obs_lon, expHighRes_lon),
+                    (True, False, False),
+                    (False, False, True)
+                )
+                for itr, db, values, lat, lon, llabel, rlabel in combined_lists:
+                    ax = fig.add_subplot(
+                        1, 3, itr + 1, projection = ccrs.PlateCarree()
                     )
-                else:
-                    title = (
-                        f"{configs_exps[db]['model']['name']} [exp: {db}]\n"
-                        f"Run: {init_time} UTC\nValid from "
-                        f"{valid_times[0].strftime('%Y-%m %d-%Hz')} "
-                        f"(+{str(lead_time_ini.item()).zfill(2)}) to "
-                        f"{valid_times[-1].strftime('%d-%Hz')} "
-                        f"(+{str(lead_time_end.item()).zfill(2)})"
-                    )
-                if ((var_verif == 'pcp') | (var_verif == 'rain')):
-                    if db == obs_db:
-                        values_to_plot = np.nansum(values[1:], axis = 0)
+                    if itr == 1:
+                        title = (
+                            f"{db}\nValid from "
+                            f'{valid_times[0].strftime("%Y-%m %d-%Hz")} to '
+                            f'{valid_times[-1].strftime("%d-%Hz")}'
+                        )
                     else:
-                        if lead_time_ini.item() == 0:
-                            values_to_plot = values[-1].copy()
+                        title = (
+                            f"{configs_exps[db]['model']['name']} [exp: {db}]\n"
+                            f"Run: {init_time} UTC\nValid from "
+                            f"{valid_times[0].strftime('%Y-%m %d-%Hz')} "
+                            f"(+{str(lead_time_ini.item()).zfill(2)}) to "
+                            f"{valid_times[-1].strftime('%d-%Hz')} "
+                            f"(+{str(lead_time_end.item()).zfill(2)})"
+                        )
+                    if ((var_verif == 'pcp') | (var_verif == 'rain')):
+                        if db == obs_db:
+                            values_to_plot = np.nansum(values[1:], axis = 0)
                         else:
-                            values_to_plot = values[-1].copy() - values[0].copy()
-                            values_to_plot[values_to_plot < 0.] = 0.
-                    n_hours = (lead_time_end - lead_time_ini).item()
-                    cb_label = (
-                        f'{var_verif_description.replace("1", str(n_hours))} '
-                        f"({var_verif_units})"
+                            if lead_time_ini.item() == 0:
+                                values_to_plot = values[-1].copy()
+                            else:
+                                values_to_plot = values[-1].copy() - values[0].copy()
+                                values_to_plot[values_to_plot < 0.] = 0.
+                        n_hours = (lead_time_end - lead_time_ini).item()
+                        cb_label = (
+                            f'{var_verif_description.replace("1", str(n_hours))} '
+                            f"({var_verif_units})"
+                        )
+                        cmap = ecmwf_accum_pcp_cmap_2
+                        norm = ecmwf_accum_pcp_norm_2
+                    elif var_verif == 'bt':
+                        values_to_plot = np.min(values, axis = 0)
+                        cb_label = (
+                            f"{key}. {var_verif_description} "
+                            "({var_verif_units})"
+                        )
+                        cmap = colormaps[var_verif]['map']
+                        norm = colormaps[var_verif]['norm']
+                    else:
+                        values_to_plot = np.max(values, axis = 0)
+                        cb_label = (
+                            f"{key}. {var_verif_description} "
+                            f"({var_verif_units})"
+                        )
+                        cmap = colormaps[var_verif]['map']
+                        norm = colormaps[var_verif]['norm']
+                    ax, _ = PlotMapInAxis(
+                        ax=ax, 
+                        data=values_to_plot, 
+                        lat=lat, 
+                        lon=lon, 
+                        extent=case_domain, 
+                        title=title, 
+                        cb_label=cb_label, 
+                        left_grid_label=llabel, 
+                        right_grid_label=rlabel, 
+                        cmap=cmap, 
+                        norm=norm
                     )
-                    cmap = ecmwf_accum_pcp_cmap_2
-                    norm = ecmwf_accum_pcp_norm_2
-                elif var_verif == 'bt':
-                    values_to_plot = np.min(values, axis = 0)
-                    cb_label = (
-                        f"{key}. {var_verif_description} "
-                        "({var_verif_units})"
-                    )
-                    cmap = colormaps[var_verif]['map']
-                    norm = colormaps[var_verif]['norm']
-                else:
-                    values_to_plot = np.max(values, axis = 0)
-                    cb_label = (
-                        f"{key}. {var_verif_description} "
-                        f"({var_verif_units})"
-                    )
-                    cmap = colormaps[var_verif]['map']
-                    norm = colormaps[var_verif]['norm']
-                ax, _ = PlotMapInAxis(
-                    ax=ax, 
-                    data=values_to_plot, 
-                    lat=lat, 
-                    lon=lon, 
-                    extent=case_domain, 
-                    title=title, 
-                    cb_label=cb_label, 
-                    left_grid_label=llabel, 
-                    right_grid_label=rlabel, 
-                    cmap=cmap, 
-                    norm=norm
+                    if len(verif_domains.keys()) == 1:
+                        ax = plot_verif_domain_in_axis(
+                            ax, tuple(verif_domains.values())[0], obs_lat, obs_lon
+                        )
+                fig.savefig(
+                    fig_total_name,
+                    dpi=600,
+                    bbox_inches='tight',
+                    pad_inches=0.05
                 )
-                if len(verif_domains.keys()) == 1:
-                    ax = plot_verif_domain_in_axis(
-                        ax, tuple(verif_domains.values())[0], obs_lat, obs_lon
-                    )
-            fig.savefig(
-                fig_total_name,
-                dpi=600,
-                bbox_inches='tight',
-                pad_inches=0.05
-            )
-            plt.close(iterator)
-            print(f"INFO: file '{fig_total_name}' saved")
+                plt.close(iterator)
+                print(f"INFO: file '{fig_total_name}' saved")
+            else:
+                print(
+                    "INFO: one of the obs/exps files has not been found. "
+                    "Plotting is not possible."
+                )
         else:
             print(f"INFO: file '{fig_total_name}' found. Avoiding plot.")
     return 0
