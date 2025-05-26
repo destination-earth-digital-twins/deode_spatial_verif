@@ -1,9 +1,9 @@
 'path':
-    '/scratch/snh02/DE_observations/opera/%Y/%m/%d/radar/composite/cirrus_nimbus/acrr/pash_acrr_1hr/'
+    '/scratch/snh02/DE_observations/opera/%Y/%m/%d/'
 'format':
     'filename':
         'refl': 'ODC.REF_%Y%m%d%H%M.h5'
-        'rain': '%Y%m%d%H0000.rad.euoc.image.acrr.pash_acrr_1hr.hdf'
+        'rain': 'T_PASH22_C_EUOC_%Y%m%d%H%M%S.hdf'
     'fileformat': 'HDF5'
 'vars':
     'refl':

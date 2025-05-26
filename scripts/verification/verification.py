@@ -484,20 +484,24 @@ def main(obs, case, exp, relative_indexed_path, replace_bool):
 
             # save pickles
             dictFSS_sort = dict(sorted(dictFSS.items()))
+            pickle_fss_name = formatter.format_string(
+                "pickle_fss", init_time=init_time, acc_h=accum_h
+            )
             SavePickle(
                 dictFSS,
-                formatter.format_string(
-                    "pickle_fss", init_time=init_time, acc_h=accum_h
-                )
+                pickle_fss_name
             )
+            print(f"INFO: file 'pickle_fss_name' saved")
             dfSAL.sort_index(inplace=True)
             pickle_sal['values'] = dfSAL.copy()
+            pickle_sal_name = formatter.format_string(
+                "pickle_sal", init_time=init_time, acc_h=accum_h
+            )
             SavePickle(
                 pickle_sal,
-                formatter.format_string(
-                    "pickle_sal", init_time=init_time, acc_h=accum_h
-                )
+                pickle_sal_name
             )
+            print(f"INFO: file 'pickle_sal_name' saved")
     return 0
 
 if __name__ == '__main__':
