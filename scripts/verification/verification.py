@@ -491,7 +491,7 @@ def main(obs, case, exp, relative_indexed_path, replace_bool):
                 dictFSS,
                 pickle_fss_name
             )
-            print(f"INFO: file 'pickle_fss_name' saved")
+            print(f"INFO: file {pickle_fss_name} saved")
             dfSAL.sort_index(inplace=True)
             pickle_sal['values'] = dfSAL.copy()
             pickle_sal_name = formatter.format_string(
@@ -501,7 +501,7 @@ def main(obs, case, exp, relative_indexed_path, replace_bool):
                 pickle_sal,
                 pickle_sal_name
             )
-            print(f"INFO: file 'pickle_sal_name' saved")
+            print(f"INFO: file {pickle_sal_name} saved")
     return 0
 
 if __name__ == '__main__':
