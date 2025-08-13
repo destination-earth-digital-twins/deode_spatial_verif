@@ -133,9 +133,8 @@ def main(obs, case, exp, relative_indexed_path):
                     exp_filename_t = lead_time_replace(
                         exp_filename, lead_time.item()
                     )
-                    exp_origin = os.path.join(
-                        datetime.strftime(date_simus_ini, files_orig_path), 
-                        exp_filename_t
+                    exp_origin = date_simus_ini.strftime(
+                        os.path.join(files_orig_path, exp_filename_t)
                     )
                     path_linked_sim = f"SIMULATIONS/{relative_indexed_path}/{exp}/data_orig/{init_time}"
                     os.makedirs(os.path.dirname(path_linked_sim), exist_ok=True)
@@ -204,11 +203,8 @@ def main(obs, case, exp, relative_indexed_path):
                         exp_filename_dt = lead_time_replace(
                             exp_filename, lead_time.item() - accum_h
                         )
-                        exp_origin_dt = os.path.join(
-                            datetime.strftime(
-                                date_simus_ini, files_orig_path
-                            ),
-                            exp_filename_dt
+                        exp_origin_dt = date_simus_ini.strftime(
+                            os.path.join(files_orig_path, exp_filename_dt)
                         )
                         os.system(
                             f"ln -s {exp_origin_dt} "
