@@ -63,6 +63,8 @@ def main(obs, case, relative_indexed_path):
         files_acc = []
         date_prev = date_verif - timedelta(hours=accum_h - 1)
         dates = pd.date_range(date_prev, date_verif, freq="1h").to_pydatetime()
+        if dates.size == 0:
+            dates = [date_verif]
         for date in dates:
             # link files
             obs_destin = date.strftime(
