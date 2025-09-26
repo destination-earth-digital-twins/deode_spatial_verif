@@ -1,0 +1,30 @@
+name: spaverif_conda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - cartopy=0.22.0
+  - eumdac=3.0.0
+  - h5py=3.10.0
+  - imageio=2.34.0
+  - matplotlib=3.8.3
+  - numpy=1.26.4
+  - pandas=2.3.0
+  - pillow=11.2.1
+  - pygrib=2.1.5
+  - pyproj=3.6.1
+  - pysteps=1.9.0
+  - python-dateutil=2.9.0.post0
+  - pyyaml=6.0.1
+  - scipy=1.15.2
+  - seaborn=0.13.2
+  - scikit-image=0.24.0
+  - tomli=2.2.1
+  - xarray=2024.2.0
+  - toml=0.10.2
+  # NetCDF support
+  - netcdf4
+  - h5netcdf
+  - libnetcdf
+  - cftime
+  - pip  # optional if you later want pip install
