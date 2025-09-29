@@ -1,5 +1,5 @@
 'path':
-    '/scratch/snh02/DE_observations/opera/%Y/%m/%d/'
+    '/ec/res4/hpcperm/snh02/DE_observations/opera/%Y/%m/%d/'
 'format':
     'filename':
         'refl': 'ODC.REF_%Y%m%d%H%M.h5'
@@ -31,8 +31,8 @@
         'units': 'mm'
         'verif':
             'times':
-                'accum_hours': 1
-                'freq_verif': 1
+                'accum_hours': 6
+                'freq_verif': 6
             'FSS': 
                 'thresholds': [0.5, 1, 2, 4, 8, 16]
                 'scales': [5, 10, 20, 40, 60]

@@ -22,7 +22,7 @@ def main(obs, case, exps, relative_indexed_path):
     obs_db, var_verif = obs.split('_')
 
     # observation database info
-    print("INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
+    print(f"INFO: Loading OBS YAML file: config/obs_db/config_{obs_db}.yaml")
     config_obs_db = LoadConfigFileFromYaml(
         f'config/obs_db/config_{obs_db}.yaml'
     )
