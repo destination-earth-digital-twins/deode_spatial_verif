@@ -23,6 +23,14 @@ def get_vars_from_nc(file_nc, vars, date = None):
     list_vars = check_is_typelist(vars)
     print(f'INFO:LoadWriteData:reading {file_nc}')
     with xr.open_dataset(file_nc) as nc_dataset:
+        try:
+            lat_raw = nc_dataset["lat"].values.copy()
+        except KeyError:
+            lat_raw = nc_dataset["latitude"].values.copy()
+        if lat_raw[0, 0] > lat_raw[-1, 0]:
+            grid_must_flip = True
+        else:
+            grid_must_flip = False
         if date is None:
             try:
                 date_get = nc_dataset.time.values[0]
@@ -33,12 +41,14 @@ def get_vars_from_nc(file_nc, vars, date = None):
         listArrays = []
         for var in list_vars:
             print(f'INFO:LoadWriteData:get {var} values')
-            if ((var == 'lat') | (var == 'lon') | (var == 'latitude') | (var == 'longitude')):
-                listArrays.append(nc_dataset[var].values.copy())
-            elif var == 'flash_accumulation' and "time" not in nc_dataset.dims:  # flash data has not (t, y, x) dimensions and is rotated
-                listArrays.append(np.flipud(nc_dataset[var].values))
+            if ((var == 'lat') | (var == 'lon') | (var == 'latitude') | (var == 'longitude') | (date_get is None)):
+                values_array = nc_dataset[var].values.copy()
             else:
-                listArrays.append(nc_dataset[var].sel(time=date_get).values.copy())
+                values_array = nc_dataset[var].sel(time=date_get).values.copy()
+            if grid_must_flip:
+                listArrays.append(np.flipud(values_array))
+            else:
+                listArrays.append(values_array)
         if len(list_vars) == 1:
             return listArrays[0]
         else:
@@ -46,11 +56,9 @@ def get_vars_from_nc(file_nc, vars, date = None):
 
 def get_lat_lon_from_nc(file_nc):
     try:
-        lat, lon = get_vars_from_nc(file_nc, vars = ['lat', 'lon'])
-    except KeyError:  # flash data is rotated
-        lat_rot, lon_rot = get_vars_from_nc(file_nc, vars = ['latitude', 'longitude'])
-        lat = np.flipud(lat_rot)
-        lon = np.flipud(lon_rot)
+        lat, lon = get_vars_from_nc(file_nc, vars=['lat', 'lon'])
+    except KeyError:
+        lat, lon = get_vars_from_nc(file_nc, vars=['latitude', 'longitude'])
     return lat.copy(), lon.copy()
         
 def get_lat_lon_raw_from_msg(msg):
@@ -85,11 +93,13 @@ def get_vars_from_grib(file_grib, vars):
     first_grb = grbs.select()[0]
     lat_raw, lon_raw = get_lat_lon_raw_from_msg(first_grb)
     if lat_raw[0, 0] > lat_raw[-1, 0]:
-        lat_must_flip = True
+        grid_must_flip = True
         lat = np.flipud(lat_raw)
+        lon = np.flipud(lon_raw)
     else:
-        lat_must_flip = False
+        grid_must_flip = False
         lat = lat_raw.copy()
+        lon = lon_raw.copy()
     values_to_get = []
     for var in list_vars:
         if var == 'lat':
@@ -97,14 +107,14 @@ def get_vars_from_grib(file_grib, vars):
             values_to_get.append(lat)
         elif var == 'lon':
             print(f'INFO:LoadWriteData:get longitude grid')
-            values_to_get.append(np.where(lon_raw > 180., lon_raw - 360., lon_raw))
+            values_to_get.append(np.where(lon > 180., lon - 360., lon))
         else:
             grb = get_msg_from_code(grbs, var)
             try:
                 print(f'INFO:LoadWriteData:get {grb.name} values in {grb.units} at {grb.level} ({grb.typeOfLevel})')
             except RuntimeError:
                 print('INFO:LoadWriteData:get values')
-            if lat_must_flip:
+            if grid_must_flip:
                 values_to_get.append(np.flipud(grb["values"]))
             else:
                 values_to_get.append(grb["values"])
