@@ -1,6 +1,6 @@
 from LoadWriteData import get_vars_from_grib, get_lat_lon_from_grib, get_vars_from_nc, get_lat_lon_from_nc, get_vars_from_HDF5, get_lat_lon_from_HDF5
 from PostProcess import *
-from colormaps import pcp_map, pcp_norm, bt_cmap, bt_norm, inverse_bt_cmap, inverse_bt_norm, refl_cmap, refl_norm, ecmwf_pcp_cmap, ecmwf_pcp_norm
+from colormaps import pcp_map, pcp_norm, bt_cmap, bt_norm, inverse_bt_cmap, inverse_bt_norm, refl_cmap, refl_norm, ecmwf_pcp_cmap, ecmwf_pcp_norm, flash_cmap, flash_norm
 
 
 get_grid_function = {
@@ -20,7 +20,8 @@ colormaps = {
     "rain": {"map": ecmwf_pcp_cmap, "norm": ecmwf_pcp_norm},
     "bt": {"map": bt_cmap, "norm": bt_norm},
     "inverse_bt": {"map": inverse_bt_cmap, "norm": inverse_bt_norm},
-    "refl": {"map": refl_cmap, "norm": refl_norm}
+    "refl": {"map": refl_cmap, "norm": refl_norm},
+    "flash": {"map": flash_cmap, "norm": flash_norm}
 }
 
 postprocess_function = {

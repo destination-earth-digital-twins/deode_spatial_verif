@@ -14,6 +14,7 @@ main.sh
 PLOTS/side_plots/plots_IMERG_pcp/*
 PLOTS/side_plots/plots_OPERA_rain/*
 PLOTS/side_plots/plots_Antilope_pcp/*
+PLOTS/side_plots/plots_MTGLI_flash/*
 scripts/libs/__pycache__/*
 standalones/*
 tomls/*

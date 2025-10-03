@@ -122,6 +122,12 @@ def main(obs, case, relative_indexed_path):
                 encoding={'time': {'units': 'seconds since 1970-01-01'}}
             )
             print(f"INFO: file '{file_accum}' saved")
+        else:
+            print(
+                "INFO: There is no need or it is not possible to compute "
+                "cumulative values for date: "
+                f"{date_verif.strftime('%Y%m%d%H')}"
+            )
 
     if check_is_empty_dir(os.path.join(obs_path_destin, "*")):
         raise ValueError(f"Error: '{obs_path_destin}' está vacío.")

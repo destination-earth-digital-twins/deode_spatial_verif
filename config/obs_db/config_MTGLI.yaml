@@ -1,23 +1,23 @@
 'path':
-    '/ec/res4/hpcperm/snh02/DE_observations/mtg_li_l2_processed_5km/%Y/%m/%d/'
+    '/ec/res4/scratch/snh02/DE_observations/mtg_li_l2_processed_5km/%Y/%m/%d/'
 'format':
     'filename':
-        'flashdens': 'flash_accumulation_%Y%m%d_%H.nc'
+        'flash': 'flash_accumulation_%Y%m%d_%H.nc'
     'fileformat': 'netCDF'
 'vars':
-    'flashdens':
+    'flash':
         'var': 'flash_accumulation'
-        'postprocess': True
+        'postprocess': False
         'res': '5 km'
-        'description': 'Flash density'
-        'units': 'strikes per km2'
+        'description': '1-hour Flash density'
+        'units': 'km**-2'
         'verif':
             'times':
-                'accum_hours': 0
-                'freq_verif': 1
+                'accum_hours': 12
+                'freq_verif': 48
             'FSS': 
-                'thresholds': [10, 20, 30, 40, 50]
-                'scales': [4, 6, 8, 10, 12, 14]
+                'thresholds': [0.5, 1, 5, 10, 25]
+                'scales': [1, 4, 6, 8, 10]
             'SAL':
                 'f': 0.50
                 'q': 0.95

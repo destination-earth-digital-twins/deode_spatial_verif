@@ -265,3 +265,20 @@ ecmwf_wind_gust_colors = [
     (0.5,0,0.9),
     (0.35,0,0.6)]
 ecmwf_wind_gust_cmap, ecmwf_wind_gust_norm = from_levels_and_colors(ecmwf_wind_gust_levels, ecmwf_wind_gust_colors, extend = 'max')
+
+flash_levels = [0., 0.5, 1., 1.5, 3.5, 7., 15., 25., 50.]
+flash_colors_rgb = [
+    (255, 255, 255),
+    (212, 212, 212),
+    (126, 126, 126),
+    (190, 190,   0),
+    (255, 255,   0),
+    (255, 169,   0),
+    (255,  83,   0),
+    (169,   0,   0),
+    (40,   0,   0)
+]
+flash_colors = []
+for rgb in flash_colors_rgb:
+    flash_colors.append([v / 255. for v in rgb])
+flash_cmap, flash_norm = from_levels_and_colors(flash_levels, flash_colors, extend="max")

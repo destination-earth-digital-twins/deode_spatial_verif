@@ -24,14 +24,19 @@ def get_vars_from_nc(file_nc, vars, date = None):
     print(f'INFO:LoadWriteData:reading {file_nc}')
     with xr.open_dataset(file_nc) as nc_dataset:
         if date is None:
-            date_get = nc_dataset.time.values[0]
+            try:
+                date_get = nc_dataset.time.values[0]
+            except IndexError:
+                date_get = None
         else:
             date_get = date
         listArrays = []
         for var in list_vars:
             print(f'INFO:LoadWriteData:get {var} values')
-            if ((var == 'lat') | (var == 'lon')):
+            if ((var == 'lat') | (var == 'lon') | (var == 'latitude') | (var == 'longitude')):
                 listArrays.append(nc_dataset[var].values.copy())
+            elif var == 'flash_accumulation' and "time" not in nc_dataset.dims:  # flash data has not (t, y, x) dimensions and is rotated
+                listArrays.append(np.flipud(nc_dataset[var].values))
             else:
                 listArrays.append(nc_dataset[var].sel(time=date_get).values.copy())
         if len(list_vars) == 1:
@@ -40,7 +45,12 @@ def get_vars_from_nc(file_nc, vars, date = None):
             return listArrays
 
 def get_lat_lon_from_nc(file_nc):
-    lat, lon = get_vars_from_nc(file_nc, vars = ['lat', 'lon'])
+    try:
+        lat, lon = get_vars_from_nc(file_nc, vars = ['lat', 'lon'])
+    except KeyError:  # flash data is rotated
+        lat_rot, lon_rot = get_vars_from_nc(file_nc, vars = ['latitude', 'longitude'])
+        lat = np.flipud(lat_rot)
+        lon = np.flipud(lon_rot)
     return lat.copy(), lon.copy()
         
 def get_lat_lon_raw_from_msg(msg):

@@ -13,7 +13,7 @@ def main(obs, case, exp, relative_indexed_path):
 
     # exp data
     config_exp = f"config/exp/{relative_indexed_path}/config_{exp}.yaml"
-    print("INFO: Loading EXP YAML file: {config_exp}")
+    print(f"INFO: Loading EXP YAML file: {config_exp}")
     if not os.path.isfile(config_exp):
         raise FileNotFoundError(f"ERROR: {config_exp} not found")
     data_exp = LoadConfigFileFromYaml(config_exp)
