@@ -128,6 +128,11 @@ def main(obs, case, exp, relative_indexed_path):
                     acc_h=accum_h
                 )
                 if not os.path.isfile(file_regrid):
+                    valid_time = date_simus_ini + timedelta(hours=lead_time.item())
+                    obs_file = datetime.strftime(
+                        valid_time,
+                        f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}'
+                    )
                     # link original simus to SIMULATIONS/
                     files_orig_path = exp_filepaths[config_exp['inits'][init_time]['path']].replace('%exp', exp)
                     exp_filename_t = lead_time_replace(
@@ -145,11 +150,7 @@ def main(obs, case, exp, relative_indexed_path):
                     )
 
                     # check lat-lon coordinates from original exps are already retrieved
-                    if simus_lat is None and simus_lon is None:
-                        obs_file = datetime.strftime(
-                            date_ini,
-                            f'OBSERVATIONS/data_{obs}/{relative_indexed_path}/{case}/{obs_filename}'
-                        )
+                    if simus_lat is None and simus_lon is None and os.path.isfile(obs_file):
                         simus_file = datetime.strftime(
                             date_simus_ini,
                             f"{path_linked_sim}/{exp_filename_t}"
@@ -196,6 +197,8 @@ def main(obs, case, exp, relative_indexed_path):
                             f"urc: ({simus_lat[-1, -1].round(2)}, "
                             f"{simus_lon[-1, -1].round(2)})"
                         )
+                    else:
+                        continue
 
                     if is_accum and (lead_time.item() - accum_h) > 0:
                         print(f"INFO: compute decumulated values")
@@ -265,7 +268,6 @@ def main(obs, case, exp, relative_indexed_path):
                         )
         
                     # plot original simus
-                    valid_time = date_simus_ini + timedelta(hours=lead_time.item())
                     fig = plt.figure(
                         0, figsize=(11. / 2.54, 11. / 2.54), clear=True
                     )
